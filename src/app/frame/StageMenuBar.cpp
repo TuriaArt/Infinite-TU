@@ -1297,6 +1297,41 @@ void DrawMenuBar(FrameCtx& fc)
          const float minGap = tok::space_4;
          float cursorX = windowRight;
 
+         // The eye controls only nodes that have an eye row; audio bodies and
+         // name-only macros deliberately keep their controls visible.
+         auto hasParamEye = [](const GraphNode& gn) {
+            const INode* n = gn.node.get();
+            return n && !IsAudioBodyNode(gn.node.get()) && !dynamic_cast<const CommentNode*>(n) &&
+               !dynamic_cast<const MacroKnobNode*>(n) && !dynamic_cast<const MacroSliderNode*>(n) &&
+               !dynamic_cast<const MacroBipolarKnobNode*>(n) && !dynamic_cast<const MacroTriggerNode*>(n) &&
+               !dynamic_cast<const MacroToggleNode*>(n) && !dynamic_cast<const MacroNumBoxNode*>(n);
+         };
+         if (cursorX - tok::control_h >= centreEndX + minGap)
+         {
+            bool anyShown = false;
+            for (const GraphNode& gn : gNodes)
+               if (hasParamEye(gn) && gn.showParams) { anyShown = true; break; }
+            cursorX -= tok::control_h;
+            TopBarPlaceAt(cursorX);
+            if (IconTile::Draw("##allNodeParams", IconsInfinite::EyeOff, IconsInfinite::Eye, anyShown))
+               for (GraphNode& gn : gNodes)
+                  if (hasParamEye(gn)) gn.showParams = !anyShown;
+            if (ImGui::IsItemHovered())
+               Tip::Show("%s", anyShown ? T("Hide all params") : T("Show all params"));
+            cursorX -= telemetryGap;
+         }
+
+         if (cursorX - tok::control_h >= centreEndX + minGap)
+         {
+            cursorX -= tok::control_h;
+            TopBarPlaceAt(cursorX);
+            if (ChipButton::Draw(L("i##nodeInspector"), gInspectorOpen, tok::control_h, tok::control_h))
+               gInspectorOpen = !gInspectorOpen;
+            if (ImGui::IsItemHovered())
+               Tip::Show("%s", T("Node inspector"));
+            cursorX -= telemetryGap;
+         }
+
          // Update: a quiet icon tile (down arrow in an accent wash, with a dot) that only exists while a newer
          // version is available. Click opens the update dialog (Update now, in place); right-click dismisses until the
          // next version.

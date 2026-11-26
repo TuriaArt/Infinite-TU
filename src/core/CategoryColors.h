@@ -37,6 +37,11 @@ namespace CategoryColors
    const UiTheme& CurrentUiTheme();
    bool IsThemeLight();
 
+   // Chrome colours are overridden per preset, leaving the curated defaults intact.
+   enum class UiColorRole { WindowBg, PanelBg, Text, TextDim, Border, Accent, Count };
+   void SetUiColor(UiColorRole role, const Color& color, bool saveToFile = true);
+   void ResetUiColors();
+
    // The UiTheme belonging to preset `index` (clamped), regardless of which
    // preset is currently active. Used to preview other presets (e.g. in the
    // theme picker dropdown) without switching the live theme.

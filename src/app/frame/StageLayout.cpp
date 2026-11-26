@@ -533,6 +533,15 @@ void DrawLayout(FrameCtx& fc)
          gHistoryWidth = std::min(gHistoryWidth, std::max(tok::dock_history_min_w, Ui::AvailW() * tok::dock_history_max_frac));
          rightReserved += gHistoryWidth;
       }
+      // The inspector shares the canvas row with the other right docks. Give
+      // the canvas its minimum first; narrow windows scroll the panel's body.
+      fc.inspectorWidth = gInspectorOpen && !fc.viewFill
+         ? std::max(0.0f, std::min(kAudioNodeWidth + tok::space_4 + tok::space_4,
+                                    Ui::AvailW() - rightReserved - tok::dock_canvas_min_w))
+         : 0.0f;
+      if (fc.inspectorWidth <= tok::space_4 + tok::space_4)
+         fc.inspectorWidth = 0.0f; // not enough room for the card's own insets
+      rightReserved += fc.inspectorWidth;
       const float graphWidth = rightReserved > 0.0f
                                   ? std::max(tok::dock_canvas_min_w, Ui::AvailW() - rightReserved)
                                   : 0.0f;

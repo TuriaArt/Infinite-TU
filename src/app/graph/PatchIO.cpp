@@ -489,6 +489,8 @@ namespace app
             gView3DPrefs.invertZoom = (val != "0");
          else if (key == "cableVisibilityMask")
             gCableVisibilityMask = atoi(val.c_str());
+         else if (key == "panelInspectorOpen")
+            gInspectorOpen = (val != "0");
          else if (key == "panelNodeOpen")
             gNodePanelOpen = (val != "0");
          else if (key == "panelViewportOpen")
@@ -612,6 +614,7 @@ namespace app
       file << "v3d.orbitSelection=" << (gView3DPrefs.orbitSelection ? 1 : 0) << "\n";
       file << "v3d.invertZoom=" << (gView3DPrefs.invertZoom ? 1 : 0) << "\n";
       file << "cableVisibilityMask=" << gCableVisibilityMask << "\n";
+      file << "panelInspectorOpen=" << (gInspectorOpen ? 1 : 0) << "\n";
       file << "panelNodeOpen=" << (gNodePanelOpen ? 1 : 0) << "\n";
       file << "panelViewportOpen=" << (gViewportPanelOpen ? 1 : 0) << "\n";
       file << "panelViewportDock=" << gViewportPanelDock << "\n";
@@ -672,6 +675,7 @@ namespace app
                     gSampleStudioDock, gPianoRollDock, gTerminalDock,
                     UiFmt::F0(gViewportPanelWidth).c, UiFmt::F0(gViewportPanelHeight).c, UiFmt::F0(gModMatrixWidth).c, UiFmt::F0(gModMatrixHeight).c, UiFmt::F0(gPerfPanelWidth).c,
                     UiFmt::F0(gPerfPanelHeight).c, UiFmt::F0(gHistoryWidth).c, UiFmt::F0(gSampleStudioHeight).c, UiFmt::F0(gPianoRollHeight).c, UiFmt::F0(gTerminalHeight).c, UiFmt::F0(gTerminalWidth).c);
+      std::snprintf(buf + std::strlen(buf), sizeof buf - std::strlen(buf), "|%d", gInspectorOpen);
       std::snprintf(buf + std::strlen(buf), sizeof buf - std::strlen(buf), "|%d%d %s %s", gMixerPanelOpen, gMixerPanelDock,
                     UiFmt::F0(gMixerPanelWidth).c, UiFmt::F0(gMixerPanelHeight).c);
       std::snprintf(buf + std::strlen(buf), sizeof buf - std::strlen(buf), "|%d%d %s", gDrumPanelOpen, gDrumPanelDock, UiFmt::F0(gDrumPanelHeight).c);

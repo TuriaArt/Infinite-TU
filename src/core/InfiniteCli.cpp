@@ -1083,7 +1083,7 @@ Nodes    node <node> rename <name>, params|viewport on|off, panel, window [close
 See      shot <node> [out.png]  frame [p.inf] <t> <out.png>  render <p.inf> <out.mp4>  audio <p.inf> <out.json>
 Code     code kinds|new|check|push|pull|watch|errors|docs|examples
 Generate patch recipes|new|check|layout|apply
-App      panel [name|settings/<place>] [open|close] [bottom|right|left|top]  settings [key [value]]|devices|midi|apply|updates|reset|logs|gpu [n]|global [name [expr]]|extension <file>
+App      panel [name|settings/<place>] [open|close] [bottom|right|left|top]  settings [key [value]]|devices|midi|apply|updates|reset|resetThemeColors|logs|gpu [n]|global [name [expr]]|extension <file>
          show list|next|prev|go <n>|lock|panic|check|add|remove <n>|clear|open|save|fade <ms>|quantize <n>|launch <n>
          view fit|params on|off|clearcards|metronome [on|off]  quit
 Learn    context  attention  guide  docs [topic [name]]  find <words>  version
@@ -1606,7 +1606,7 @@ map, and the visual, sound and film crafts.
       }
       if (verb == "settings")
       {
-         if (!args.empty() && (args[0] == "apply" || args[0] == "devices" || args[0] == "midi" || args[0] == "updates" || args[0] == "reset" || args[0] == "logs"))
+         if (!args.empty() && (args[0] == "apply" || args[0] == "devices" || args[0] == "midi" || args[0] == "updates" || args[0] == "reset" || args[0] == "resetThemeColors" || args[0] == "logs"))
             return call("settings", { { "action", args[0] } });
          if (!args.empty() && args[0] == "gpu")
             return call("settings", args.size() > 1 ? json{ { "action", "gpu" }, { "value", atoi(args[1].c_str()) } } : json{ { "action", "gpu" } });

@@ -711,7 +711,7 @@ namespace app
              (!options->empty() && known->enumOptions.front() != options->front()))
             ref.enumOptions = *options;
       }
-      Modulation::Instance().RegisterParam(ref);
+      if (!gInspectorDrawing) Modulation::Instance().RegisterParam(ref);
 
       h.value = slot;
       gDiscreteParamLastWritten[key] = slot;
@@ -735,10 +735,12 @@ namespace app
                              float controlHeight)
    {
       const int pinId = h.nodeIndex * GraphNode::kStride + GraphNode::kParamBase + h.paramIndex;
-      gDrawnParamPins.insert(pinId);
+      if (!gInspectorDrawing) gDrawnParamPins.insert(pinId);
 
-      ed::BeginPin(pinId, ed::PinKind::Input);
-      ed::PinPivotAlignment(ImVec2(tok::param_discrete_pin_pivot_alignment_x, tok::param_discrete_pin_pivot_alignment_y));
+      if (!gInspectorDrawing) {
+         ed::BeginPin(pinId, ed::PinKind::Input);
+         ed::PinPivotAlignment(ImVec2(tok::param_discrete_pin_pivot_alignment_x, tok::param_discrete_pin_pivot_alignment_y));
+      }
       const ImVec2 origin = ImGui::GetCursorScreenPos();
       const float box = tok::pin_box;
       const ImVec2 p = controlHeight > 0.0f
@@ -750,15 +752,14 @@ namespace app
       const ImVec2 c(p.x + box * 0.5f, p.y + box * 0.5f);
       const bool isLight = IsThemeLight();
       PinDot::Param(dl, c, h.modulated ? PinDot::State::Modulated : PinDot::State::Idle, isLight);
-      ExpandPinHit(c, p.x + box);
-      ed::EndPin();
+      if (!gInspectorDrawing) { ExpandPinHit(c, p.x + box); ed::EndPin(); }
 
       GraphNode* curGn = FindNodeByIndex(h.nodeIndex);
       // rowMin starts after the pin box + its SameLine gap, not at the pin
       // itself - the assign-mode highlight traces the actual widget, and
       // starting it at the pin left the highlight overhanging past the
       // widget's real left edge by the pin's own width.
-      gParamPinScreenList.push_back({ h.nodeIndex, h.paramIndex, curGn ? curGn->typeName : "",
+      if (!gInspectorDrawing) gParamPinScreenList.push_back({ h.nodeIndex, h.paramIndex, curGn ? curGn->typeName : "",
                                       StripParamLabel(label), c, ImVec2(p.x + box + tok::space_1, p.y),
                                       ImVec2(p.x + width, p.y + box + tok::space_1) });
       ImGui::SetCursorScreenPos(ImVec2(origin.x + box + tok::space_1, origin.y));

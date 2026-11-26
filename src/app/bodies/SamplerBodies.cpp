@@ -2067,8 +2067,12 @@ namespace app
          const float stepsW = gAudioBodyW - gutterW - rightGutterW;
          const float cellW = (stepsW - cellGap * (float)(gridCols - 1)) / (float)gridCols;
          const ImVec2 origin = ImGui::GetCursorScreenPos();
-         n->gridCanvasTopY = origin.y;
-         n->gridCanvasRowH = rowH + rowGap;
+         // File drops use the canvas coordinates, not the inspector copy.
+         if (!gInspectorDrawing)
+         {
+            n->gridCanvasTopY = origin.y;
+            n->gridCanvasRowH = rowH + rowGap;
+         }
          ImDrawList* dl = ImGui::GetWindowDrawList();
          const bool isLight = IsThemeLight();
          const int curStep = n->run ? n->CurrentStep() : -1; // no playhead while stopped
@@ -2166,15 +2170,15 @@ namespace app
             const float pinY = y0 + rowH * 0.5f;
             const int pinId = gn.OutputPinId(1 + lane);
 
-            ed::BeginPin(pinId, ed::PinKind::Output);
-            ed::PinPivotAlignment(ImVec2(tok::sampler_drum_sequencer_body_pin_pivot_alignment_x, tok::sampler_drum_sequencer_body_pin_pivot_alignment_y));
+            if (!gInspectorDrawing) ed::BeginPin(pinId, ed::PinKind::Output);
+            if (!gInspectorDrawing) ed::PinPivotAlignment(ImVec2(tok::sampler_drum_sequencer_body_pin_pivot_alignment_x, tok::sampler_drum_sequencer_body_pin_pivot_alignment_y));
             const ImVec2 pinCenter(pinX, pinY);
             const ImVec2 pinMin(pinCenter.x - kPinHit * 0.5f, pinCenter.y - kPinHit * 0.5f);
             const ImVec2 pinMax(pinCenter.x + kPinHit * 0.5f, pinCenter.y + kPinHit * 0.5f);
-            ed::PinRect(pinMin, pinMax);
+            if (!gInspectorDrawing) ed::PinRect(pinMin, pinMax);
 
             PinDot::Cable(dl, pinCenter, /*prediction=*/false, isLight);
-            ed::EndPin();
+            if (!gInspectorDrawing) ed::EndPin();
 
             ImGui::PopID();
          }

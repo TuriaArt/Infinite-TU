@@ -1998,6 +1998,11 @@ void NoteHiddenParamAlias(int nodeIndex, int hiddenParam, int shownParam);
 extern std::map<int, int> gPinAlias;
 
 extern bool gParamRegisterOnly;
+// A second presentation of a node's controls outside the node editor. It must
+// never register another canvas pin or duplicate a modulation frame pointer.
+extern bool gInspectorDrawing;
+extern bool gInspectorOpen;
+void DrawNodeParamControls(GraphNode& gn);
 extern int gParamProbeNode; // this node registers its controls next frame though its eye is closed
 
 extern std::vector<int> gPendingSelect;

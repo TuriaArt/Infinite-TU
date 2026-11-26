@@ -28,7 +28,7 @@ namespace app
       if (it != gAudioReadout.end())
       {
          readout = it->second;
-         it->second.clear(); // cleared every frame; controls re-write it while hovered
+         if (!gInspectorDrawing) it->second.clear(); // canvas consumes the per-frame readout
       }
 
       const bool isLight = IsThemeLight();

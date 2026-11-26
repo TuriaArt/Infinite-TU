@@ -808,6 +808,13 @@ namespace app
             outResult = json::object();
             return true;
          }
+         if (action == "resetThemeColors")
+         {
+            CategoryColors::ResetUiColors();
+            ApplyTheme();
+            outResult = json::object();
+            return true;
+         }
          if (action == "logs")
          {
             Platform::RevealLogs();

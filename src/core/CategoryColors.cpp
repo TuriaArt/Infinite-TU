@@ -457,6 +457,21 @@ const std::vector<Preset>& Presets()
 int gCurrent = 0;
 
 // Polarity-specific appearance overrides
+std::map<std::string, std::map<int, Color>> gUiOverrides;
+
+Color& UiColor(UiTheme& theme, int role)
+{
+   switch (static_cast<UiColorRole>(role))
+   {
+      case UiColorRole::WindowBg: return theme.windowBg;
+      case UiColorRole::PanelBg: return theme.panelBg;
+      case UiColorRole::Text: return theme.text;
+      case UiColorRole::TextDim: return theme.textDim;
+      case UiColorRole::Border: return theme.border;
+      default: return theme.accent;
+   }
+}
+
 std::map<std::string, Color> gCategoryOverridesDark;
 std::map<std::string, Color> gCategoryOverridesLight;
 std::map<int, Color> gCableOverridesDark;
@@ -496,6 +511,7 @@ std::string AppearancePath()
 
 void LoadAppearanceOverrides()
 {
+   gUiOverrides.clear();
    gCategoryOverridesDark.clear();
    gCategoryOverridesLight.clear();
    gCableOverridesDark.clear();
@@ -538,7 +554,23 @@ void LoadAppearanceOverrides()
          return false;
       };
 
-      if (key.rfind("category.dark.", 0) == 0)
+      if (key.rfind("theme.", 0) == 0)
+      {
+         const size_t dot = key.rfind('.');
+         if (dot > 6)
+         {
+            const std::string name = key.substr(6, dot - 6);
+            const std::string roleText = key.substr(dot + 1);
+            char* end = nullptr;
+            const long role = std::strtol(roleText.c_str(), &end, 10);
+            Color c;
+            if (end != roleText.c_str() && *end == '\0' && role >= 0 && role < (int)UiColorRole::Count &&
+                parseColor(val, c) && std::isfinite(c.r) && std::isfinite(c.g) && std::isfinite(c.b) &&
+                c.r >= 0 && c.r <= 1 && c.g >= 0 && c.g <= 1 && c.b >= 0 && c.b <= 1)
+               gUiOverrides[name][(int)role] = c;
+         }
+      }
+      else if (key.rfind("category.dark.", 0) == 0)
       {
          const std::string cat = key.substr(14);
          Color c;
@@ -650,7 +682,24 @@ void SetPresetTransient(int index)
 
 const UiTheme& CurrentUiTheme()
 {
-   return Presets()[gCurrent].ui;
+   return UiThemeForPreset(gCurrent);
+}
+
+void SetUiColor(UiColorRole role, const Color& color, bool saveToFile)
+{
+   const int index = static_cast<int>(role);
+   if (index < 0 || index >= (int)UiColorRole::Count ||
+       !std::isfinite(color.r) || !std::isfinite(color.g) || !std::isfinite(color.b))
+      return;
+   gUiOverrides[Presets()[gCurrent].name][index] = {
+      std::clamp(color.r, 0.0f, 1.0f), std::clamp(color.g, 0.0f, 1.0f), std::clamp(color.b, 0.0f, 1.0f) };
+   if (saveToFile) SaveAppearanceOverrides();
+}
+
+void ResetUiColors()
+{
+   gUiOverrides.erase(Presets()[gCurrent].name);
+   SaveAppearanceOverrides();
 }
 
 const UiTheme& UiThemeForPreset(int index)
@@ -658,7 +707,15 @@ const UiTheme& UiThemeForPreset(int index)
    const auto& presets = Presets();
    const int count = (int)presets.size();
    const int clamped = count > 0 ? std::max(0, std::min(index, count - 1)) : 0;
-   return presets[clamped].ui;
+   // Return a stable per-preset copy so callers can keep references while querying another preset.
+   static std::vector<UiTheme> effective;
+   effective.resize(presets.size());
+   effective[clamped] = presets[clamped].ui;
+   const auto it = gUiOverrides.find(presets[clamped].name);
+   if (it != gUiOverrides.end())
+      for (const auto& entry : it->second)
+         UiColor(effective[clamped], entry.first) = entry.second;
+   return effective[clamped];
 }
 
 bool IsThemeLight()
@@ -990,6 +1047,7 @@ void ResetAllAppearance(bool light)
 
 void ResetAllAppearanceBoth()
 {
+   gUiOverrides.clear();
    ResetAllAppearance(false);
    ResetAllAppearance(true);
 }
@@ -1001,7 +1059,7 @@ void SaveAppearanceOverrides()
       return;
 
    // If everything is default, remove the overrides file
-   if (gCategoryOverridesDark.empty() && gCategoryOverridesLight.empty() &&
+   if (gUiOverrides.empty() && gCategoryOverridesDark.empty() && gCategoryOverridesLight.empty() &&
        gCableOverridesDark.empty() && gCableOverridesLight.empty() &&
        gNodeOpacityDark < 0.0f && gNodeOpacityLight < 0.0f &&
        gTintWeightDark < 0.0f && gTintWeightLight < 0.0f &&
@@ -1016,6 +1074,9 @@ void SaveAppearanceOverrides()
       return;
 
    file << std::fixed << std::setprecision(4);
+   for (const auto& preset : gUiOverrides)
+      for (const auto& entry : preset.second)
+         file << "theme." << preset.first << "." << entry.first << "=" << entry.second.r << "," << entry.second.g << "," << entry.second.b << "\n";
    for (const auto& kv : gCategoryOverridesDark)
       file << "category.dark." << kv.first << "=" << kv.second.r << "," << kv.second.g << "," << kv.second.b << "\n";
    for (const auto& kv : gCategoryOverridesLight)

@@ -1158,12 +1158,14 @@ bool gHeadlessNeedProbe = false;
    std::map<int, int> gPinAlias;
    void NoteHiddenParamAlias(int nodeIndex, int hiddenParam, int shownParam)
    {
+      if (gInspectorDrawing) return;
       const int base = nodeIndex * GraphNode::kStride + GraphNode::kParamBase;
       gPinAlias[base + hiddenParam] = base + shownParam;
    }
    void NoteHiddenParamAnchor(int nodeIndex, int paramIndex, const ImVec2& screenPos)
    {
-      gPinAnchors[nodeIndex * GraphNode::kStride + GraphNode::kParamBase + paramIndex] = screenPos;
+      if (!gInspectorDrawing)
+         gPinAnchors[nodeIndex * GraphNode::kStride + GraphNode::kParamBase + paramIndex] = screenPos;
    }
    void NoteHiddenParamAnchorAtLastItem(int paramIndex)
    {
@@ -1184,6 +1186,8 @@ bool gHeadlessNeedProbe = false;
    // so the widgets must NOT declare them again here: ed::BeginPin twice on
    // one id in a frame is undefined.
    bool gParamRegisterOnly = false;
+   bool gInspectorDrawing = false;
+   bool gInspectorOpen = false;
    int gParamProbeNode = -1;
 
    // Nodes to select next frame; they do not exist in the editor until they

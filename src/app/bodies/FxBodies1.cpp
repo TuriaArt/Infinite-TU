@@ -2283,8 +2283,8 @@ namespace app
          rateSlot.minValue = rateLo;
          rateSlot.maxValue = rateHi;
          rateSlot.name = "rate";
-         Modulation::Instance().RegisterParam(rateSlot);
-         NoteHiddenParamAnchorAtLastItem(rateSlot.paramIndex);
+         if (!gInspectorDrawing) Modulation::Instance().RegisterParam(rateSlot);
+         if (!gInspectorDrawing) NoteHiddenParamAnchorAtLastItem(rateSlot.paramIndex);
       }
       else
       {

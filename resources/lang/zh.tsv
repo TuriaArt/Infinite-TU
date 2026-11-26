@@ -3949,3 +3949,17 @@ tick(division)	=en
 uv, xy, col, res, aspect, alpha, age	=en
 vectors     vec2(x,y) vec3(x,y,z) vec4(x,y,z,w) or splat vec3(1)	=en
 xvfb-run -a ...	=en
+
+# Inspector and theme palette
+Node inspector	节点检查器
+Pin	固定
+Keep this node in the inspector when selection changes	更改选择时在检查器中保留此节点
+Select one node to inspect its controls.	选择一个节点以查看其控件。
+Interface colors	界面颜色
+Window background	窗口背景
+Panel background	面板背景
+Dim text	暗淡文字
+Border	边框
+Accent	强调色
+Reset theme colors	重置主题颜色
+i	=en

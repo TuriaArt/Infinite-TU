@@ -939,7 +939,7 @@ namespace app
       slot.minValue = minV;
       slot.maxValue = maxV;
       slot.name = name;
-      Modulation::Instance().RegisterParam(slot);
+      if (!gInspectorDrawing) Modulation::Instance().RegisterParam(slot);
    }
 
 

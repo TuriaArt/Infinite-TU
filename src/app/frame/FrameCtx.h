@@ -69,6 +69,7 @@ struct FrameCtx
    bool arrangeRight{};
    bool sessionBottom{};
    float graphHeight{};
+   float inspectorWidth{};
    // A 2D or 3D View on Fill: the canvas row is laid out past the window's bottom edge (it still cooks), and the
    // bottom-docked rows resume from here.
    bool viewFill{};

@@ -3955,3 +3955,17 @@ tick(division)	=en
 uv, xy, col, res, aspect, alpha, age	=en
 vectors     vec2(x,y) vec3(x,y,z) vec4(x,y,z,w) or splat vec3(1)	=en
 xvfb-run -a ...	=en
+
+# Inspector and theme palette
+Node inspector	Инспектор узла
+Pin	Закрепить
+Keep this node in the inspector when selection changes	Оставить этот узел в инспекторе при смене выделения
+Select one node to inspect its controls.	Выберите один узел, чтобы увидеть его настройки.
+Interface colors	Цвета интерфейса
+Window background	Фон окна
+Panel background	Фон панели
+Dim text	Приглушённый текст
+Border	Граница
+Accent	Акцент
+Reset theme colors	Сбросить цвета темы
+i	=en

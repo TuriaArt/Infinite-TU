@@ -596,8 +596,11 @@ namespace app
       const float keyW = (w - tok::space_1) / (float)whiteCount;
 
       ImGui::SetCursorScreenPos(origin);
-      UiInteract::Hit("##keyboardHit", ImVec2(w, h));
-      const bool active = ImGui::IsItemActive();
+      if (gInspectorDrawing)
+         Ui::Claim(ImVec2(w, h)); // playback is owned by the canvas keyboard
+      else
+         UiInteract::Hit("##keyboardHit", ImVec2(w, h));
+      const bool active = !gInspectorDrawing && ImGui::IsItemActive();
       const ImVec2 mouse = ImGui::GetIO().MousePos;
 
       int hitNote = -1;
@@ -713,57 +716,63 @@ namespace app
       const int lowNote = std::clamp(baseNote, 0, 103);   // fixed - never recentres under an active click
       const int hit = DrawInteractiveKeyboard(held, lowNote, 3);  // ui-audit-ok: model (octave count)
 
-      if (hit != n->mMouseNote)
+      // The canvas owns the live keyboard input state. A second presentation
+      // must not release its held mouse note or process typing keys twice.
+      if (!gInspectorDrawing)
       {
-         if (n->mMouseNote >= 0)
-            n->SetKeyState(n->mMouseNote, false);
-         if (hit >= 0)
-            n->SetKeyState(hit, true);
-         n->mMouseNote = hit;
-      }
+         if (hit != n->mMouseNote)
+         {
+            if (n->mMouseNote >= 0)
+               n->SetKeyState(n->mMouseNote, false);
+            if (hit >= 0)
+               n->SetKeyState(hit, true);
+            n->mMouseNote = hit;
+         }
 
-      // The letter keys play the Keyboard under the mouse, or the one Keyboard that is the whole
-      // selection (the armed-track rule: New Synth selects its Keyboard, so it plays with no hover).
-      const bool isHovered = ed::GetHoveredNode() == ed::NodeId(gn.NodeId()) ||
-                             (ed::GetSelectedObjectCount() == 1 && ed::IsNodeSelected(gn.NodeId()));
-      if (n->computerKeyboardEnabled && isHovered)
-         gComputerKeyboardHot = true; // letter keys belong to this node; canvas WASD/F/H/U stand down
-      // No Cmd/Ctrl/Alt: Cmd+Z, Cmd+S, Cmd+C... are shortcuts, not notes (Z, S and C are piano keys). No Shift either:
-      // Shift+letter is a canvas chord, and a capital typed by mistake should not sound. !gArrangeFocused: the
-      // timeline owns the keyboard (its M marker key would otherwise also play a note here).
-      const ImGuiIO& io = ImGui::GetIO();
-      const bool canPlay = n->computerKeyboardEnabled && isHovered && !TextFocusClaimed() && !gArrangeFocused &&
-                           !io.KeyCtrl && !io.KeySuper && !io.KeyAlt && !io.KeyShift;
-      static_assert(sizeof(kTypingKeys) / sizeof(kTypingKeys[0]) <= sizeof(n->mTypedNotes) / sizeof(int), "mTypedNotes");
-      for (int i = 0; i < (int)(sizeof(kTypingKeys) / sizeof(kTypingKeys[0])); i++)
-      {
-         const TypingKey& tk = kTypingKeys[i];
-         // Release always processed, even off-hover, so a key held while the
-         // mouse leaves the node can't leave a note stuck on. Press requires
-         // hover + the toggle, so typing here doesn't hijack shortcuts
-         // elsewhere in the app.
-         if (ImGui::IsKeyReleased(tk.key))
+         // The letter keys play the Keyboard under the mouse, or the one Keyboard that is the whole
+         // selection (the armed-track rule: New Synth selects its Keyboard, so it plays with no hover).
+         const bool isHovered = ed::GetHoveredNode() == ed::NodeId(gn.NodeId()) ||
+                                (ed::GetSelectedObjectCount() == 1 && ed::IsNodeSelected(gn.NodeId()));
+         if (n->computerKeyboardEnabled && isHovered)
+            gComputerKeyboardHot = true; // letter keys belong to this node; canvas WASD/F/H/U stand down
+         // No Cmd/Ctrl/Alt: Cmd+Z, Cmd+S, Cmd+C... are shortcuts, not notes (Z, S and C are piano keys). No Shift either:
+         // Shift+letter is a canvas chord, and a capital typed by mistake should not sound. !gArrangeFocused: the
+         // timeline owns the keyboard (its M marker key would otherwise also play a note here).
+         const ImGuiIO& io = ImGui::GetIO();
+         const bool canPlay = n->computerKeyboardEnabled && isHovered && !TextFocusClaimed() && !gArrangeFocused &&
+                              !io.KeyCtrl && !io.KeySuper && !io.KeyAlt && !io.KeyShift;
+         static_assert(sizeof(kTypingKeys) / sizeof(kTypingKeys[0]) <= sizeof(n->mTypedNotes) / sizeof(int), "mTypedNotes");
+         for (int i = 0; i < (int)(sizeof(kTypingKeys) / sizeof(kTypingKeys[0])); i++)
          {
-            if (n->mTypedNotes[i] > 0)
-               n->SetKeyState(n->mTypedNotes[i] - 1, false);
-            n->mTypedNotes[i] = 0;
+            const TypingKey& tk = kTypingKeys[i];
+            // Release always processed, even off-hover, so a key held while the
+            // mouse leaves the node can't leave a note stuck on. Press requires
+            // hover + the toggle, so typing here doesn't hijack shortcuts
+            // elsewhere in the app.
+            if (ImGui::IsKeyReleased(tk.key))
+            {
+               if (n->mTypedNotes[i] > 0)
+                  n->SetKeyState(n->mTypedNotes[i] - 1, false);
+               n->mTypedNotes[i] = 0;
+            }
+            else if (canPlay && n->mTypedNotes[i] == 0 && ImGui::IsKeyPressed(tk.key, false))
+            {
+               const int note = std::clamp(baseNote + tk.semitone, 0, 127);
+               n->SetKeyState(note, true);
+               n->mTypedNotes[i] = note + 1;
+            }
          }
-         else if (canPlay && n->mTypedNotes[i] == 0 && ImGui::IsKeyPressed(tk.key, false))
+         // - and = step the octave (Logic's Musical Typing keys). Held keys keep the note they pressed.
+         if (canPlay && (Keymap::KeyPressed(Keymap::Act::OctaveDown) || Keymap::KeyPressed(Keymap::Act::OctaveUp)))
          {
-            const int note = std::clamp(baseNote + tk.semitone, 0, 127);
-            n->SetKeyState(note, true);
-            n->mTypedNotes[i] = note + 1;
+            const int next = std::clamp(n->baseOctave + (Keymap::KeyPressed(Keymap::Act::OctaveUp) ? 1 : -1), -1, 7);
+            if (next != n->baseOctave)
+            {
+               PushUndoCheckpoint();
+               n->baseOctave = next;
+            }
          }
-      }
-      // - and = step the octave (Logic's Musical Typing keys). Held keys keep the note they pressed.
-      if (canPlay && (Keymap::KeyPressed(Keymap::Act::OctaveDown) || Keymap::KeyPressed(Keymap::Act::OctaveUp)))
-      {
-         const int next = std::clamp(n->baseOctave + (Keymap::KeyPressed(Keymap::Act::OctaveUp) ? 1 : -1), -1, 7);
-         if (next != n->baseOctave)
-         {
-            PushUndoCheckpoint();
-            n->baseOctave = next;
-         }
+
       }
 
       Ui::Spacer(Ui::Space::S1_25);
@@ -1148,9 +1157,9 @@ namespace app
          rateSlot.minValue = 0.02f;
          rateSlot.maxValue = 2.0f;
          rateSlot.name = "rate";
-         Modulation::Instance().RegisterParam(rateSlot);
+         if (!gInspectorDrawing) Modulation::Instance().RegisterParam(rateSlot);
          // A cable into the hidden rate shows dotted, ending on the division dropdown.
-         NoteHiddenParamAnchorAtLastItem(rateSlot.paramIndex);
+         if (!gInspectorDrawing) NoteHiddenParamAnchorAtLastItem(rateSlot.paramIndex);
       }
       else
       {

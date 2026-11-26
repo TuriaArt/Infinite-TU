@@ -349,14 +349,14 @@ namespace app
             // pin's bounds explicitly, sidestepping that group-bounds path.
             ImGui::PushID(outputIndex);
             const int pinId = nodeIndex * GraphNode::kStride + GraphNode::kOutputBase + outputIndex;
-            ed::BeginPin(pinId, ed::PinKind::Output);
-            ed::PinPivotAlignment(ImVec2(tok::geometry_params_table_grid_pin_pivot_alignment_x, tok::geometry_params_table_grid_pin_pivot_alignment_y));
+            if (!gInspectorDrawing) ed::BeginPin(pinId, ed::PinKind::Output);
+            if (!gInspectorDrawing) ed::PinPivotAlignment(ImVec2(tok::geometry_params_table_grid_pin_pivot_alignment_x, tok::geometry_params_table_grid_pin_pivot_alignment_y));
             const ImVec2 pinCenter(cellMax.x - tok::geometry_params_table_grid_gap, cellMax.y - tok::geometry_params_table_grid_gap);
             const ImVec2 pinMin(pinCenter.x - kPinHit * 0.5f, pinCenter.y - kPinHit * 0.5f);
             const ImVec2 pinMax(pinCenter.x + kPinHit * 0.5f, pinCenter.y + kPinHit * 0.5f);
-            ed::PinRect(pinMin, pinMax);
+            if (!gInspectorDrawing) ed::PinRect(pinMin, pinMax);
             PinDot::Cable(dl, pinCenter, /*prediction=*/false, isLight, /*small=*/true);
-            ed::EndPin();
+            if (!gInspectorDrawing) ed::EndPin();
             ImGui::PopID();
          }
       }

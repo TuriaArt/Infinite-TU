@@ -292,6 +292,7 @@
   "panels/SettingsWindow.cpp:Preview Background": "settings checkerboard",
   "panels/SettingsWindow.cpp:Record movement log": "settings movementLog",
   "panels/SettingsWindow.cpp:Reduce motion": "settings reduceMotion",
+  "panels/SettingsWindow.cpp:Reset theme colors": "settings resetThemeColors",
   "panels/SettingsWindow.cpp:Reset to Defaults": "settings reset",
   "panels/SettingsWindow.cpp:Reveal logs": "settings logs",
   "panels/SettingsWindow.cpp:Sample rate": "settings sampleRate",

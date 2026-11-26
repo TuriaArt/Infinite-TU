@@ -88,6 +88,15 @@ namespace PanelFrame
    }
    inline void EndCard() { EndChildSafe(); }
 
+   // Scrollable contents below a fixed panel header, including wide node bodies.
+   inline void BeginScrollContent(const char* id)
+   {
+      ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+      ImGui::BeginChild(id, ImVec2(0.0f, 0.0f), ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
+      ImGui::PopStyleVar();
+   }
+   inline void EndScrollContent() { EndChildSafe(); }
+
    // Borderless, transparent vertical tool rail (scrollable when tall, no visible scrollbar chrome).
    inline void BeginRail(const char* id, ImVec2 size)
    {

@@ -3948,3 +3948,17 @@ tick(division)	=en
 uv, xy, col, res, aspect, alpha, age	=en
 vectors     vec2(x,y) vec3(x,y,z) vec4(x,y,z,w) or splat vec3(1)	=en
 xvfb-run -a ...	=en
+
+# Inspector and theme palette
+Node inspector	Inspector de nodo
+Pin	Fijar
+Keep this node in the inspector when selection changes	Mantener este nodo en el inspector al cambiar la selección
+Select one node to inspect its controls.	Selecciona un nodo para ver sus controles.
+Interface colors	Colores de interfaz
+Window background	Fondo de ventana
+Panel background	Fondo de panel
+Dim text	Texto tenue
+Border	Borde
+Accent	Acento
+Reset theme colors	Restablecer colores del tema
+i	=en

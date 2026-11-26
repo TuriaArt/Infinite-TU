@@ -3948,3 +3948,17 @@ tick(division)	=en
 uv, xy, col, res, aspect, alpha, age	=en
 vectors     vec2(x,y) vec3(x,y,z) vec4(x,y,z,w) or splat vec3(1)	=en
 xvfb-run -a ...	=en
+
+# Inspector and theme palette
+Node inspector	Knoteninspektor
+Pin	Anheften
+Keep this node in the inspector when selection changes	Diesen Knoten bei Auswahlwechsel im Inspektor behalten
+Select one node to inspect its controls.	Einen Knoten auswählen, um seine Einstellungen anzuzeigen.
+Interface colors	Oberflächenfarben
+Window background	Fensterhintergrund
+Panel background	Panelhintergrund
+Dim text	Gedämpfter Text
+Border	Rand
+Accent	Akzent
+Reset theme colors	Theme-Farben zurücksetzen
+i	=en

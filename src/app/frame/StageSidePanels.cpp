@@ -12,8 +12,11 @@
 #include "app/ui/design/components/PillGroup.h"
 #include "app/ui/design/components/LibraryParts.h"
 #include "app/ui/design/components/PanelFrame.h"
+#include "app/ui/design/components/ChipButton.h"
+#include "app/ui/design/components/Divider.h"
 #include "app/ui/design/UiScope.h"
 #include "app/frame/FrameCtx.h"
+#include "app/frame/InspectorTarget.h"
 #include "app/frame/CanvasLink.h"
 #include "app/panels/CurveEditorPanel.h"
 #include "app/panels/FieldPatcherPanel.h"
@@ -145,6 +148,83 @@ namespace
       PopDropdownStyle();
    }
 }
+// Inspector keeps a UID, never a GraphNode pointer: deleting a node, undoing
+// or opening a different patch must not leave a dangling / recycled target.
+static void DrawNodeInspector(float width, float height)
+{
+   static InspectorTarget target;
+   static uint64_t previousUid = 0;
+   ed::SetCurrentEditor(gEditor);
+   ed::NodeId selected[2];
+   const int count = ed::GetSelectedNodes(selected, 2);
+   GraphNode* selectedNode = count == 1
+      ? FindNodeByIndex((int)selected[0].Get() / GraphNode::kStride) : nullptr;
+   const uint64_t uid = target.Update(gArrangePatchGeneration, selectedNode ? selectedNode->uid : 0,
+                                      target.Pinned() && FindNodeByUid(target.Pinned()) != nullptr);
+   GraphNode* node = FindNodeByUid(uid);
+
+   PushDockedPanelStyle(true);
+   PanelFrame::BeginCard("##nodeinspector", ImVec2(width, height), {}, ImGuiWindowFlags_NoScrollbar);
+   PopDockedPanelStyle();
+   const float headerY = ImGui::GetCursorPosY();
+   ImGui::TextUnformatted(node ? NodeTitleWithInstance(*node).c_str() : T("Node inspector"));
+   {
+      const float pinWidth = std::max(tok::control_h, ImGui::CalcTextSize(T("Pin")).x + tok::space_4);
+      Ui::Aside pin(headerY, pinWidth);
+      if (node != nullptr)
+      {
+         if (ChipButton::Draw(L("Pin"), target.Pinned() != 0, tok::control_h, pinWidth))
+            target.TogglePin();
+         if (ImGui::IsItemHovered())
+            Tip::Show("%s", T("Keep this node in the inspector when selection changes"));
+      }
+   }
+   Divider::Rule();
+   PanelFrame::BeginScrollContent("##inspectorBody");
+   if (uid != previousUid)
+   {
+      ImGui::SetScrollX(0.0f);
+      ImGui::SetScrollY(0.0f);
+      previousUid = uid;
+   }
+   if (node == nullptr)
+      ImGui::TextWrapped("%s", T("Select one node to inspect its controls."));
+   else
+   {
+      ImGui::PushID(node->index);
+      BeginNodeParams(node->index);
+      gInspectorDrawing = true;
+      const float savedWidth = gParamWidthLive;
+      gParamWidthLive = (dynamic_cast<Render3DNode*>(node->node.get()) ||
+                         dynamic_cast<MaterialNode*>(node->node.get()))
+         ? std::max(kParamWidthBase, kWideNodeWidth - tok::space_4) : kParamWidthBase;
+      if (IsAudioBodyNode(node->node.get()))
+         DrawAudioNodeBody(*node);
+      else
+      {
+         // Macro controls live in the node body rather than behind its eye.
+         if (auto* n = dynamic_cast<MacroKnobNode*>(node->node.get())) DrawMacroKnobBody(n);
+         else if (auto* n = dynamic_cast<MacroSliderNode*>(node->node.get())) DrawMacroSliderBody(n);
+         else if (auto* n = dynamic_cast<MacroBipolarKnobNode*>(node->node.get())) DrawMacroBipolarKnobBody(n);
+         else if (auto* n = dynamic_cast<MacroXYNode*>(node->node.get())) DrawMacroXYBody(n);
+         else if (auto* n = dynamic_cast<MacroToggleNode*>(node->node.get())) DrawMacroToggleBody(n);
+         else if (auto* n = dynamic_cast<MacroTriggerNode*>(node->node.get())) DrawMacroTriggerBody(n);
+         else if (auto* n = dynamic_cast<MacroNumBoxNode*>(node->node.get())) DrawMacroNumBoxBody(n);
+         else if (auto* n = dynamic_cast<MacroRadioSelectorNode*>(node->node.get())) DrawMacroRadioSelectorBody(n);
+         else if (auto* n = dynamic_cast<MacroStepGateNode*>(node->node.get())) DrawMacroStepGateBody(n);
+         if (!dynamic_cast<CommentNode*>(node->node.get()))
+            DrawNodeParamControls(*node);
+      }
+      gParamWidthLive = savedWidth;
+      gInspectorDrawing = false;
+      EndNodeParams();
+      ImGui::PopID();
+   }
+   PanelFrame::EndScrollContent();
+   PanelFrame::EndCard();
+   ed::SetCurrentEditor(nullptr);
+}
+
 void DrawSidePanels(FrameCtx& fc)
 {
    ImGuiIO& io = ImGui::GetIO();
@@ -413,6 +493,13 @@ void DrawSidePanels(FrameCtx& fc)
       if (gHistoryOpen)
       {
          DrawHistoryDocked("##historypanel_right", ImVec2(gHistoryWidth, graphHeight));
+      }
+
+      // The inspector sits beside the Library, just like the other docks.
+      if (gInspectorOpen && fc.inspectorWidth > 0.0f && !fc.viewFill)
+      {
+         Ui::SameRow(Ui::Space::None);
+         DrawNodeInspector(fc.inspectorWidth, graphHeight);
       }
 
       // ---- node browser / search panel ----

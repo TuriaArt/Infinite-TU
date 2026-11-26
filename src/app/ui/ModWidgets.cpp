@@ -120,7 +120,7 @@ namespace app
       ref.posToValue = posToValue;
       ref.valueToPos = valueToPos;
       ref.srcAddr = TakePendingSrcAddr(value);
-      Modulation::Instance().RegisterParam(ref);
+      if (!gInspectorDrawing) Modulation::Instance().RegisterParam(ref);
       if (gParamRegisterOnly)
          return false; // registered, deliberately not drawn - see gParamRegisterOnly
 
@@ -144,12 +144,14 @@ namespace app
       // purely transient state, so it can coexist with exprErrored (still
       // editable) but never with modulated/hasExpr (both read-only already).
       const bool recording = !modulated && GestureRecorder::Instance().IsRecording(nodeIndex, paramIndex);
-      gDrawnParamPins.insert(pinId);
+      if (!gInspectorDrawing) gDrawnParamPins.insert(pinId);
 
       ImGui::PushID(paramIndex + 5000);
 
-      ed::BeginPin(pinId, ed::PinKind::Input);
-      ed::PinPivotAlignment(ImVec2(tok::mod_slider_pin_pivot_alignment_x, tok::mod_slider_pin_pivot_alignment_y));
+      if (!gInspectorDrawing) {
+         ed::BeginPin(pinId, ed::PinKind::Input);
+         ed::PinPivotAlignment(ImVec2(tok::mod_slider_pin_pivot_alignment_x, tok::mod_slider_pin_pivot_alignment_y));
+      }
       const ImVec2 origin = ImGui::GetCursorScreenPos();
       const float box = tok::pin_box;
       // Centred on the slider track's frame height, same fix and same
@@ -169,12 +171,11 @@ namespace app
                     : hasExpr && !exprErrored ? PinDot::State::Expression
                     : PinDot::State::Idle,
                     isLight);
-      ExpandPinHit(c, p.x + box);
-      ed::EndPin();
+      if (!gInspectorDrawing) { ExpandPinHit(c, p.x + box); ed::EndPin(); }
       GraphNode* curGn = FindNodeByIndex(nodeIndex);
       // rowMin starts after the pin box + its SameLine gap, not at the pin
       // itself - see the matching comment on DrawDiscreteParamPin's push.
-      gParamPinScreenList.push_back({ nodeIndex, paramIndex, curGn ? curGn->typeName : "", paramName ? paramName : "", c,
+      if (!gInspectorDrawing) gParamPinScreenList.push_back({ nodeIndex, paramIndex, curGn ? curGn->typeName : "", paramName ? paramName : "", c,
                                       ImVec2(p.x + box + tok::space_1, p.y), ImVec2(p.x + width, p.y + box + tok::space_1) });
       if (paramIndex == gPredTestSizeXParam && nodeIndex == gPredTestNodeIndex)
          gPredTestSliderCanvas = ImVec4(p.x + box + tok::mod_pred_test_slider_canvas_x, p.y, p.x + width, p.y + box + tok::mod_pred_test_slider_canvas_x);
@@ -1296,7 +1297,7 @@ namespace app
       ref.posToValue = p2v;
       ref.valueToPos = v2p;
       ref.srcAddr = TakePendingSrcAddr(value);
-      Modulation::Instance().RegisterParam(ref);
+      if (!gInspectorDrawing) Modulation::Instance().RegisterParam(ref);
       if (gParamRegisterOnly)
          return false; // registered, deliberately not drawn - see gParamRegisterOnly
 
@@ -1307,7 +1308,7 @@ namespace app
                                                : nullptr;
       const bool exprErrored = hasExprErr != nullptr && !hasExprErr->empty();
       const bool recording = !modulated && GestureRecorder::Instance().IsRecording(nodeIndex, paramIndex);
-      gDrawnParamPins.insert(pinId);
+      if (!gInspectorDrawing) gDrawnParamPins.insert(pinId);
 
       ImGui::PushID(paramIndex + 5000);
 
@@ -1521,15 +1522,19 @@ namespace app
          const float pinX = cellOrigin.x + std::max(0.0f, (cell - widgetW) * 0.5f - box - tok::space_2);
          const ImVec2 pinTL(pinX, cellOrigin.y + (diameter - box) * 0.5f);  // centred on the knob (node-ui-pillars P2)
          ImGui::SetCursorScreenPos(pinTL);
-         ed::BeginPin(pinId, ed::PinKind::Input);
-         ed::PinPivotAlignment(ImVec2(tok::mod_knob_pin_pivot_alignment_x, tok::mod_knob_pin_pivot_alignment_y));
+         if (!gInspectorDrawing) {
+            ed::BeginPin(pinId, ed::PinKind::Input);
+            ed::PinPivotAlignment(ImVec2(tok::mod_knob_pin_pivot_alignment_x, tok::mod_knob_pin_pivot_alignment_y));
+         }
          Ui::Claim(ImVec2(box, box));
          ImDrawList* dl = ImGui::GetWindowDrawList();
          const ImVec2 c(pinTL.x + box * 0.5f, pinTL.y + box * 0.5f);
          PinDot::Param(dl, c, pinState, IsThemeLight());
-         ExpandPinHit(c, pinTL.x + box);
-         ed::EndPin();
-         gPinAnchors[pinId] = c;
+         if (!gInspectorDrawing) {
+            ExpandPinHit(c, pinTL.x + box);
+            ed::EndPin();
+            gPinAnchors[pinId] = c;
+         }
          GraphNode* curGn = FindNodeByIndex(nodeIndex);
          ParamPinScreenInfo pinInfo{ nodeIndex, paramIndex, curGn ? curGn->typeName : "", label ? label : "", c,
                                       cellOrigin, ImVec2(cellOrigin.x + cell, cellOrigin.y + diameter + tok::space_4) };
@@ -1540,7 +1545,7 @@ namespace app
             pinInfo.shapeCenter = ImVec2(cellOrigin.x + cell * 0.5f, cellOrigin.y + diameter * 0.5f);
             pinInfo.shapeRadius = diameter * 0.5f + tok::space_0_5;
          }
-         gParamPinScreenList.push_back(pinInfo);
+         if (!gInspectorDrawing) gParamPinScreenList.push_back(pinInfo);
          // Put the cursor back without SetCursorScreenPos: as the last call before EndGroup it counts as
          // "extending the parent's boundaries without an item" and ImGui flags it (Compare's last slider).
          ImGui::GetCurrentWindow()->DC.CursorPos = cursorAfter;
@@ -1622,7 +1627,7 @@ namespace app
       ref.colorIndex = colorIndex;
       ref.value = col;
       ref.name = label;
-      PaletteBinding::Instance().RegisterColor(ref);
+      if (!gInspectorDrawing) PaletteBinding::Instance().RegisterColor(ref);
       if (gParamRegisterOnly)
          return; // registered, deliberately not drawn - see gParamRegisterOnly
       NoteParamDrawStart();
@@ -1631,13 +1636,15 @@ namespace app
       const PaletteBinding::Source bound =
          PaletteBinding::Instance().SourceFor(nodeIndex, colorIndex);
       const bool isBound = bound.nodeIndex >= 0;
-      gDrawnColorPins.insert(pinId);
+      if (!gInspectorDrawing) gDrawnColorPins.insert(pinId);
 
       ImGui::PushID(label);
       ImGui::PushID(colorIndex + 9000);
 
-      ed::BeginPin(pinId, ed::PinKind::Input);
-      ed::PinPivotAlignment(ImVec2(tok::mod_color_swatch_pin_pivot_alignment_x, tok::mod_color_swatch_pin_pivot_alignment_y));
+      if (!gInspectorDrawing) {
+         ed::BeginPin(pinId, ed::PinKind::Input);
+         ed::PinPivotAlignment(ImVec2(tok::mod_color_swatch_pin_pivot_alignment_x, tok::mod_color_swatch_pin_pivot_alignment_y));
+      }
       const ImVec2 rowStart = ImGui::GetCursorScreenPos();
       const float box = tok::pin_box;
       // centred on the face, like every param pin (P2)
@@ -1647,8 +1654,7 @@ namespace app
       ImDrawList* dl = ImGui::GetWindowDrawList();
       const ImVec2 c(p.x + box * 0.5f, p.y + box * 0.5f);
       PinDot::Swatch(dl, c, isBound, IsThemeLight());
-      ExpandPinHit(c, p.x + box);
-      ed::EndPin();
+      if (!gInspectorDrawing) { ExpandPinHit(c, p.x + box); ed::EndPin(); }
       ImGui::SetCursorScreenPos(ImVec2(rowStart.x + box + tok::space_1, rowStart.y));
 
       char boundCaption[96];
@@ -1929,8 +1935,10 @@ namespace app
    // the visible dot; connecting used to require pixel-perfect aim.
    void DrawPin(int pinId, ed::PinKind kind, const char* label, bool labelFirst)
    {
-      ed::BeginPin(pinId, kind);
-      ed::PinPivotAlignment(ImVec2(tok::mod_pin_pivot_alignment_x, tok::mod_pin_pivot_alignment_y));
+      if (!gInspectorDrawing) {
+         ed::BeginPin(pinId, kind);
+         ed::PinPivotAlignment(ImVec2(tok::mod_pin_pivot_alignment_x, tok::mod_pin_pivot_alignment_y));
+      }
 
       if (labelFirst && label != nullptr && label[0] != '\0')
       {
@@ -1945,7 +1953,7 @@ namespace app
       const bool isLight = IsThemeLight();
       GraphNode* curGn = FindNodeByIndex(GraphNode::NodeIndexFromPin(pinId));
       const bool isPredPin = curGn != nullptr && (curGn->category == "Prediction" || dynamic_cast<IPredictor*>(curGn->node.get()) != nullptr);
-      if (kind == ed::PinKind::Output)
+      if (!gInspectorDrawing && kind == ed::PinKind::Output)
          gPinAnchors[pinId] = c;
       PinDot::Cable(dl, c, isPredPin, isLight);
 
@@ -1954,6 +1962,6 @@ namespace app
          Ui::SameRow(Ui::Space::S1);
          ImGui::TextDisabled("%s", label);
       }
-      ed::EndPin();
+      if (!gInspectorDrawing) ed::EndPin();
    }
 }

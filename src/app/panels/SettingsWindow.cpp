@@ -254,6 +254,32 @@ namespace app
                drawThemeSwatches(ImVec2(cursor.x, y), kSwatchSz, kSwatchGap, CategoryColors::UiThemeForPreset(currentPreset));
                Ui::Claim(ImVec2(kSwatchStripW, rowH));
             }
+            // Each preset keeps its own chrome overrides. Swatches above show the effective palette.
+            FormParts::Section(T("Interface colors"));
+            const char* const uiColorNames[] = { I18N_KEY("Window background"), I18N_KEY("Panel background"),
+               I18N_KEY("Text"), I18N_KEY("Dim text"), I18N_KEY("Border"), I18N_KEY("Accent") };
+            for (int i = 0; i < (int)CategoryColors::UiColorRole::Count; ++i)
+            {
+               const auto& theme = CategoryColors::CurrentUiTheme();
+               const CategoryColors::Color colors[] = { theme.windowBg, theme.panelBg, theme.text,
+                  theme.textDim, theme.border, theme.accent };
+               float c[] = { colors[i].r, colors[i].g, colors[i].b };
+               ImGui::PushID(i);
+               if (FormParts::ColorDot("##uiColor", c))
+               {
+                  CategoryColors::SetUiColor(static_cast<CategoryColors::UiColorRole>(i), { c[0], c[1], c[2] });
+                  ApplyTheme();
+               }
+               FormParts::Inline(0.0f, tok::space_2);
+               ImGui::TextUnformatted(T(uiColorNames[i]));
+               ImGui::PopID();
+            }
+            Ui::FormSkipLabel();
+            if (FormParts::Button(L("Reset theme colors")))
+            {
+               CategoryColors::ResetUiColors();
+               ApplyTheme();
+            }
             Ui::FormSkipLabel();
             if (FormParts::Button(L("Reset to Defaults")))
             {
