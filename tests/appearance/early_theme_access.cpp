@@ -7,9 +7,6 @@
 #pragma init_seg(lib) // before normal user-segment globals, independently of link order
 #endif
 static const bool earlyIsLight = CategoryColors::IsThemeLight();
-#ifdef _MSC_VER
-#pragma init_seg(user)
-#endif
 
 int main()
 {
