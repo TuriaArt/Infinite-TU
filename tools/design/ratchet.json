@@ -53,6 +53,7 @@
   "ctl_checkboxes": {},
   "ctl_child_windows": {
    "src/app/frame/StageFloating.cpp": 1,
+   "src/app/frame/StageSidePanels.cpp": 1,
    "src/app/panels/ArrangePanel.cpp": 3,
    "src/app/panels/ArrangeRender.cpp": 1,
    "src/app/panels/ArrangeSessionGrid.cpp": 3,
@@ -87,6 +88,7 @@
    "src/app/frame/CanvasLink.cpp": 1,
    "src/app/frame/StageMenuBar.cpp": 1,
    "src/app/frame/StagePopupsB.cpp": 1,
+   "src/app/frame/StageSidePanels.cpp": 1,
    "src/app/panels/ArrangePanel.cpp": 21,
    "src/app/panels/ArrangeSessionGrid.cpp": 2,
    "src/app/panels/ChatPanel.cpp": 8,
