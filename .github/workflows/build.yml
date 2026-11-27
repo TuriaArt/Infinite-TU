@@ -22,7 +22,7 @@ name: Build
 # below. Keep this list in sync with the paths the Pages workflow deploys from.
 on:
   push:
-    branches: [main, 'feature/**', 'bugfix/**']
+    branches: [main, 'feature/**', 'bugfix/**', 'arena/**']
     paths-ignore:
       - 'website/**'
       - 'docs/**'
