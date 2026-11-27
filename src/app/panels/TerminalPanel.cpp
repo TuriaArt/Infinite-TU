@@ -537,9 +537,17 @@ namespace
 
       if (physicalCtrl)
       {
+         // Ctrl+V pastes from the clipboard; every other Ctrl+letter becomes its control character.
+         // Both come from the virtual-key path (VK_C/VK_V on Windows, the keysym on X11), so the
+         // behavior never depends on the keyboard layout.
+         if (repeated(ImGuiKey_V))
+         {
+            if (const char* text = ImGui::GetClipboardText(); text != nullptr && text[0] != '\0')
+               tab.session->SendPaste(text);
+         }
          // Control characters never reach the text queue.
          for (int key = ImGuiKey_A; key <= ImGuiKey_Z; ++key)
-            if (repeated((ImGuiKey)key))
+            if (key != ImGuiKey_V && repeated((ImGuiKey)key))
                send(0, (uint32_t)('a' + (key - ImGuiKey_A)));
          static const struct { ImGuiKey key; char c; } kPunct[] = {
             { ImGuiKey_Space, ' ' }, { ImGuiKey_LeftBracket, '[' }, { ImGuiKey_RightBracket, ']' },
@@ -886,6 +894,41 @@ namespace
          }
          return;
       }
+      static int sPasteFrame = 0;
+      if (sPasteFrame > 0)
+      {
+         // Ctrl+V path: clipboard + virtual-key press must reach the pty as a paste, layout-independent.
+         gTerminalFocus = true;
+         ImGuiIO& io = ImGui::GetIO();
+         io.AddFocusEvent(true);
+         if (sPasteFrame == 1)
+         {
+            ImGui::SetClipboardText("paste-probe-123");
+            io.KeyCtrl = true;  // the chord check reads io.KeyCtrl directly
+            io.AddKeyEvent(ImGuiKey_V, true);
+         }
+         else if (sPasteFrame == 2)
+         {
+            io.AddKeyEvent(ImGuiKey_V, false);
+            io.KeyCtrl = false;
+         }
+         else if (sPasteFrame == 3)
+         {
+            tab.session->SendBytes("echo probe-done\n");
+         }
+         else if (sPasteFrame >= 5)
+         {
+            std::string screen;
+            for (const term::Cell& c : snap->cells)
+               screen += c.ch >= 0x20 && c.ch < 0x7F ? (char)c.ch : ' ';
+            const bool pass = screen.find("paste-probe-123") != std::string::npos && screen.find("probe-done") != std::string::npos;
+            std::printf("[TerminalTest] ctrl-v %s\n", pass ? "PASS" : "FAIL");
+            std::fflush(stdout);
+            std::_Exit(pass ? 0 : 1);
+         }
+         ++sPasteFrame;
+         return;
+      }
       if (snap == nullptr)
       {
          if (ImGui::GetTime() - sStart > 10.0)
@@ -913,6 +956,11 @@ namespace
          if (pass && std::strcmp(std::getenv("INFINITE_TERMINALTEST"), "keys") == 0)
          {
             sKeyFrame = 1;
+            return;
+         }
+         if (pass && std::strcmp(std::getenv("INFINITE_TERMINALTEST"), "paste") == 0)
+         {
+            sPasteFrame = 1;
             return;
          }
          if (pass && std::strcmp(std::getenv("INFINITE_TERMINALTEST"), "flood") == 0)
@@ -1027,6 +1075,19 @@ namespace
       UiInteract::Hit("##terminalcells", avail, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
       if (ImGui::IsItemClicked(ImGuiMouseButton_Left) || MenuParts::ContextClicked())
          gTerminalFocus = true;
+      // Right-click follows the Windows Terminal convention: over a selection it copies at once (no
+      // menu), on empty space it pastes from the clipboard. Shift+right-click still opens the dock
+      // menu - its fallback path - and a program that captures the mouse keeps the click for itself.
+      const bool reportedCells = ImGui::IsItemHovered() && snap != nullptr && snap->mouseMode != 0 && !ImGui::GetIO().KeyShift;
+      if (MenuParts::RightPressed() && !reportedCells && !sTabHovered &&
+          !ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId) &&
+          ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
+      {
+         if (tab->hasSelection)
+            tab->session->RequestCopy(tab->selLineA, tab->selColA, tab->selLineB, tab->selColB);
+         else if (const char* text = ImGui::GetClipboardText(); text != nullptr && text[0] != '\0')
+            tab->session->SendPaste(text);
+      }
       DrawDockMenu(ImGui::IsItemHovered(), snap.get());
 
       if (gTerminalDropPending.size() > 0)

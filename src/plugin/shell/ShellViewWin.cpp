@@ -405,7 +405,12 @@ namespace
             if (cp >= 0xDC00 && cp <= 0xDFFF && highSurrogate_)
                cp = 0x10000 + ((highSurrogate_ - 0xD800) << 10) + (cp - 0xDC00);
             highSurrogate_ = 0;
-            if (cp >= 32 && cp != 127)
+            // Ctrl combinations are handled from the virtual-key path (WM_KEYDOWN -> kInKey), which is
+            // layout-independent: the character the current layout would produce for Ctrl+C/V/... (ETX,
+            // 0x16, ...) must never enter the input stream as text. AltGr (Ctrl+Alt) still composes
+            // characters, so it keeps its text.
+            const bool ctrlDown = (GetKeyState(VK_CONTROL) & 0x8000) != 0 && (GetKeyState(VK_MENU) & 0x8000) == 0;
+            if (cp >= 32 && cp != 127 && !ctrlDown)
                Push({ PluginFrames::kInText, int32_t(cp), 0, Mods(), 0, 0 });
             return 0;
          }
