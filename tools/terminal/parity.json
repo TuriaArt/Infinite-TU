@@ -395,6 +395,7 @@
   "panels/ArrangePanel.cpp:Viewport Position": "covered by the dock word of `panel`",
   "panels/ArrangePanel.cpp:Zoom": "mouse tool; verbs name ids and beats",
   "panels/HelpWindows.cpp:Clear": "clears the search box of the help window",
+  "panels/HelpWindows.cpp:Copy all": "copies the help window's text to the clipboard; a clipboard action with no terminal equivalent",
   "panels/PerfPanel.cpp:Listening X... (Move MIDI CC)": "waits for a person to move a hardware control",
   "panels/PerfPanel.cpp:Listening Y... (Move MIDI CC)": "waits for a person to move a hardware control",
   "panels/PerfPanel.cpp:Listening...": "waits for a person to move a hardware control",

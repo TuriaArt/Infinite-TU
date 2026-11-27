@@ -21,6 +21,7 @@ Autosave interval	自動保存の間隔
 Autosave is FAILING - save manually	自動保存に失敗しています。手動で保存してください
 Bottom left	左下
 Bottom right	右下
+Browse models	モデルを参照
 Buffer size	バッファサイズ
 Bypass selection	選択をバイパス
 Cable Category Colors	ケーブルのカテゴリ色
@@ -31,6 +32,8 @@ Check for updates...	アップデートを確認...
 Checkerboard	チェッカーボード
 Clear cards	カードをクリア
 Close viewport panel	ビューポートパネルを閉じる
+Copy all	すべてコピー
+Copy this window's text to the clipboard	このウィンドウのテキストをクリップボードにコピー
 Could not write %s.\nCheck permissions and free disk space.	%s に書き込めませんでした。\n権限とディスクの空き容量を確認してください。
 Cut / Copy	切り取り／コピー
 Delete	削除
@@ -60,6 +63,7 @@ Input device	入力デバイス
 Install AI Skill	AIスキルをインストール
 Interface font	インターフェースのフォント
 Language	言語
+Loading…	読み込み中…
 Low latency (shared)	低レイテンシ（共有）
 Menu	メニュー
 Minimap	ミニマップ
@@ -67,6 +71,7 @@ Modulation cables	モジュレーションのケーブル
 Modulation matrix	モジュレーション・マトリクス
 Movement Log	動作ログ
 New	新規
+No models listed	モデルが一覧表示されていません
 Node Card Styling	ノードカードのスタイル
 Node Corner Radius	ノードの角丸
 Node Module Category Colors	ノードモジュールのカテゴリ色

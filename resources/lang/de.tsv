@@ -21,6 +21,7 @@ Autosave interval	Speicherintervall
 Autosave is FAILING - save manually	Automatisches Speichern SCHLÄGT FEHL – bitte manuell speichern
 Bottom left	Unten links
 Bottom right	Unten rechts
+Browse models	Modelle durchsuchen
 Buffer size	Puffergröße
 Bypass selection	Auswahl überbrücken
 Cable Category Colors	Kabelfarben nach Kategorie
@@ -31,6 +32,8 @@ Check for updates...	Nach Updates suchen...
 Checkerboard	Schachbrett
 Clear cards	Karten entfernen
 Close viewport panel	Viewport-Panel schließen
+Copy all	Alles kopieren
+Copy this window's text to the clipboard	Text dieses Fensters in die Zwischenablage kopieren
 Could not write %s.\nCheck permissions and free disk space.	%s konnte nicht geschrieben werden.\nBerechtigungen und freien Speicherplatz prüfen.
 Cut / Copy	Ausschneiden / Kopieren
 Delete	Löschen
@@ -60,6 +63,7 @@ Input device	Eingabegerät
 Install AI Skill	KI-Skill installieren
 Interface font	Oberflächenschrift
 Language	Sprache
+Loading…	Wird geladen…
 Low latency (shared)	Niedrige Latenz (geteilt)
 Menu	Menü
 Minimap	Minimap
@@ -67,6 +71,7 @@ Modulation cables	Modulationskabel
 Modulation matrix	Modulationsmatrix
 Movement Log	Bewegungsprotokoll
 New	Neu
+No models listed	Keine Modelle aufgelistet
 Node Card Styling	Node-Karten-Stil
 Node Corner Radius	Node-Eckenradius
 Node Module Category Colors	Farben der Node-Modulkategorien

@@ -21,6 +21,7 @@ Autosave interval	自动保存间隔
 Autosave is FAILING - save manually	自动保存失败——请手动保存
 Bottom left	左下
 Bottom right	右下
+Browse models	浏览模型
 Buffer size	缓冲区大小
 Bypass selection	旁通所选
 Cable Category Colors	连线分类颜色
@@ -31,6 +32,8 @@ Check for updates...	检查更新...
 Checkerboard	棋盘格
 Clear cards	清除卡片
 Close viewport panel	关闭视口面板
+Copy all	全部复制
+Copy this window's text to the clipboard	将此窗口的文本复制到剪贴板
 Could not write %s.\nCheck permissions and free disk space.	无法写入 %s。\n请检查权限和可用磁盘空间。
 Cut / Copy	剪切 / 复制
 Delete	删除
@@ -60,6 +63,7 @@ Input device	输入设备
 Install AI Skill	安装 AI 技能
 Interface font	界面字体
 Language	语言
+Loading…	加载中…
 Low latency (shared)	低延迟（共享）
 Menu	菜单
 Minimap	小地图
@@ -67,6 +71,7 @@ Modulation cables	调制连线
 Modulation matrix	调制矩阵
 Movement Log	操作记录
 New	新建
+No models listed	未列出任何模型
 Node Card Styling	节点卡片样式
 Node Corner Radius	节点圆角半径
 Node Module Category Colors	节点模块分类颜色

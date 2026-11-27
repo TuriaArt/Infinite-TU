@@ -21,6 +21,7 @@ Autosave interval	Intervalo de autoguardado
 Autosave is FAILING - save manually	El autoguardado FALLA: guarda manualmente
 Bottom left	Abajo a la izquierda
 Bottom right	Abajo a la derecha
+Browse models	Buscar modelos
 Buffer size	Tamaño del búfer
 Bypass selection	Omitir selección (bypass)
 Cable Category Colors	Colores de cables por categoría
@@ -31,6 +32,8 @@ Check for updates...	Buscar actualizaciones...
 Checkerboard	Tablero de ajedrez
 Clear cards	Borrar tarjetas
 Close viewport panel	Cerrar panel de vista
+Copy all	Copiar todo
+Copy this window's text to the clipboard	Copiar el texto de esta ventana al portapapeles
 Could not write %s.\nCheck permissions and free disk space.	No se pudo escribir %s.\nComprueba los permisos y el espacio libre en disco.
 Cut / Copy	Cortar / Copiar
 Delete	Eliminar
@@ -60,6 +63,7 @@ Input device	Dispositivo de entrada
 Install AI Skill	Instalar habilidad de IA
 Interface font	Fuente de la interfaz
 Language	Idioma
+Loading…	Cargando…
 Low latency (shared)	Baja latencia (compartido)
 Menu	Menú
 Minimap	Minimapa
@@ -67,6 +71,7 @@ Modulation cables	Cables de modulación
 Modulation matrix	Matriz de modulación
 Movement Log	Registro de movimientos
 New	Nuevo
+No models listed	No hay modelos listados
 Node Card Styling	Estilo de las tarjetas de nodo
 Node Corner Radius	Radio de esquina del nodo
 Node Module Category Colors	Colores de categoría de módulos de nodo

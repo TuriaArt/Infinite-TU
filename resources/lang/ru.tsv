@@ -21,6 +21,7 @@ Autosave interval	Интервал автосохранения
 Autosave is FAILING - save manually	Автосохранение НЕ РАБОТАЕТ — сохраните вручную
 Bottom left	Внизу слева
 Bottom right	Внизу справа
+Browse models	Просмотр моделей
 Buffer size	Размер буфера
 Bypass selection	Обойти выделенное (байпас)
 Cable Category Colors	Цвета кабелей по категориям
@@ -31,6 +32,8 @@ Check for updates...	Проверить обновления...
 Checkerboard	Шахматная доска
 Clear cards	Очистить карточки
 Close viewport panel	Закрыть панель вьюпорта
+Copy all	Копировать всё
+Copy this window's text to the clipboard	Копировать текст этого окна в буфер обмена
 Could not write %s.\nCheck permissions and free disk space.	Не удалось записать %s.\nПроверьте права доступа и свободное место на диске.
 Cut / Copy	Вырезать / Копировать
 Delete	Удалить
@@ -60,6 +63,7 @@ Input device	Устройство ввода
 Install AI Skill	Установить навык ИИ
 Interface font	Шрифт интерфейса
 Language	Язык
+Loading…	Загрузка…
 Low latency (shared)	Низкая задержка (общий)
 Menu	Меню
 Minimap	Миникарта
@@ -67,6 +71,7 @@ Modulation cables	Кабели модуляции
 Modulation matrix	Матрица модуляции
 Movement Log	Журнал действий
 New	Новый
+No models listed	Нет моделей в списке
 Node Card Styling	Стиль карточек узлов
 Node Corner Radius	Радиус углов узла
 Node Module Category Colors	Цвета категорий модулей узлов
