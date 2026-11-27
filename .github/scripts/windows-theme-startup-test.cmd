@@ -12,27 +12,6 @@ if errorlevel 1 (
 )
 echo ::notice::MSVC environment ready.
 pushd "%RUNNER_TEMP%"
-if "%~1"=="" goto fixed
-rem Optional diagnostic: the previous implementation must fail before main.
-git -C "%GITHUB_WORKSPACE%" show %1:src/core/CategoryColors.cpp > old-CategoryColors.cpp
-if errorlevel 1 (
-  echo ::error::Could not retrieve previous CategoryColors source
-  exit /b 1
-)
-echo ::notice::Previous source retrieved.
-cl /nologo /EHsc /std:c++17 /O2 /utf-8 /I"%GITHUB_WORKSPACE%\src" /I"%GITHUB_WORKSPACE%\src\core" "%GITHUB_WORKSPACE%\tests\appearance\early_theme_access.cpp" old-CategoryColors.cpp /Fe:old-theme.exe > old-compile.log 2>&1
-if errorlevel 1 (
-  for /f "usebackq delims=" %%L in ("old-compile.log") do echo ::error::%%L
-  exit /b 1
-)
-echo ::notice::Previous test compiled.
-old-theme.exe
-if not errorlevel 1 (
-  echo ::error::Previous implementation did not reproduce the startup failure
-  exit /b 1
-)
-echo ::notice::Previous implementation failed the early-initialization test, as expected.
-:fixed
 cl /nologo /EHsc /std:c++17 /O2 /utf-8 /I"%GITHUB_WORKSPACE%\src" "%GITHUB_WORKSPACE%\tests\appearance\early_theme_access.cpp" "%GITHUB_WORKSPACE%\src\core\CategoryColors.cpp" /Fe:fixed-theme.exe > fixed-compile.log 2>&1
 if errorlevel 1 (
   for /f "usebackq delims=" %%L in ("fixed-compile.log") do echo ::error::%%L

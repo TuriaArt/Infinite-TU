@@ -94,11 +94,9 @@ jobs:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Reproduce old failure and check the fix
+      - name: Check early theme access
         shell: cmd
-        run: .github\scripts\windows-theme-startup-test.cmd edc83964d72017c6f042fc37a34d976f01e39fbf
+        run: .github\scripts\windows-theme-startup-test.cmd
 
   design-ratchet:
     name: Design ratchet
@@ -128,6 +126,10 @@ jobs:
         run: python3 tools/ci/preflight.py --fast
       - name: Windows build workflow recovery checks
         run: python3 tests/ci/test_windows_workflow.py
+      - name: Theme startup initialization-order check (ASan)
+        run: |
+          g++ -std=c++17 -fsanitize=address -g -Isrc tests/appearance/early_theme_access.cpp src/core/CategoryColors.cpp -o "$RUNNER_TEMP/early-theme-test"
+          ASAN_OPTIONS=check_initialization_order=1 "$RUNNER_TEMP/early-theme-test"
 
   worker-and-mcp-tests:
     name: Worker & MCP unit tests
@@ -335,11 +337,56 @@ jobs:
       # Skipped on ARM64: the x64 runner's binary is native there, but an
       # ARM64 binary cannot be executed by an x64 host and vice versa. The
       # ARM64 job is a compile check plus an artifact.
+      # Keep crash evidence even if the process dies before our own handler is installed.
+      - name: Enable Windows crash dumps for headless tests
+        if: matrix.arch == 'x64'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP 'infinite-dumps'
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          $key = 'HKCU:\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\Infinite.exe'
+          New-Item -Path $key -Force | Out-Null
+          New-ItemProperty -Path $key -Name DumpFolder -Value $dir -PropertyType ExpandString -Force | Out-Null
+          New-ItemProperty -Path $key -Name DumpType -Value 2 -PropertyType DWord -Force | Out-Null
+
       - name: Headless self-tests
         if: matrix.arch == 'x64'
         shell: bash
         timeout-minutes: 10
         run: ./.github/scripts/headless-tests.sh build/Release/Infinite.exe
+
+      - name: Surface Windows crash log
+        if: failure() && matrix.arch == 'x64'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $diag = Join-Path $env:RUNNER_TEMP 'infinite-diagnostics'
+          New-Item -ItemType Directory -Force $diag | Out-Null
+          $log = Join-Path $env:APPDATA 'Infinite\log.txt'
+          if (Test-Path $log) {
+            Get-Content $log -Tail 30 | ForEach-Object { Write-Host "::error::Windows startup log: $_" }
+            Copy-Item $log $diag
+          } else { Write-Host '::notice::No application crash log was written.' }
+          $crash = Join-Path $env:APPDATA 'Infinite\crash'
+          if (Test-Path $crash) { Copy-Item $crash $diag -Recurse }
+          $dumps = Get-ChildItem (Join-Path $env:RUNNER_TEMP 'infinite-dumps') -ErrorAction SilentlyContinue
+          if ($dumps) {
+            Write-Host "::notice::Windows crash dump(s): $($dumps.Count)"
+            $dumps | Copy-Item -Destination $diag
+          }
+
+      - name: Preserve Windows crash diagnostics
+        if: failure() && matrix.arch == 'x64'
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: Infinite-windows-x64-crash-diagnostics
+          path: |
+            ${{ runner.temp }}/infinite-diagnostics/
+            build/Release/Infinite.pdb
+          if-no-files-found: ignore
+          retention-days: 3
 
       # Field Patcher round trip over every shipped Field preset (internal plan, Block A M7).
       - name: Field patcher check

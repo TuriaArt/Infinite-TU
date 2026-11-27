@@ -166,8 +166,10 @@ fi
 # actually loads and runs end-to-end (GitHub's Windows runners have no GPU,
 # so this also exercises the CPU-EP fallback path, not DirectML).
 echo "== INFINITE_REMOVEBGTEST"
-if ! out="$(INFINITE_REMOVEBGTEST=1 "$BIN" 2>&1)"; then
-   echo "   FAIL (crashed, exit $?)"
+out="$(INFINITE_REMOVEBGTEST=1 "$BIN" 2>&1)"
+removebg_rc=$?
+if [ "$removebg_rc" -ne 0 ]; then
+   echo "   FAIL (crashed, exit $removebg_rc)"
    printf '%s\n' "$out" | tail -20
    status=1
 elif printf '%s\n' "$out" | grep -qE "REMOVEBGTEST (OK|SKIP)"; then
