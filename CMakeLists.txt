@@ -505,6 +505,7 @@ set(COMMON_SOURCES
     src/app/graph/AudioTopology.cpp
     src/app/graph/Core.cpp
     src/app/graph/Disconnect.cpp
+    src/app/graph/NodeSearch.cpp
     src/app/graph/ExportImage.cpp
     src/app/graph/GraphHosts.cpp
     src/app/graph/NodeRegistry.cpp

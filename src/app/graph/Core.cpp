@@ -80,28 +80,8 @@ namespace app
    // Node search: case-insensitive substring that treats '-' and '_' as
    // spaces, and also matches with spaces dropped, so "key snap", "key-snap"
    // and "keysnap" all find "Key-Snap". Both sides are folded (case, Latin accents, Cyrillic).
-   bool NodeSearchMatches(std::string hay, std::string q)
-   {
-      auto norm = [](std::string& t) {
-         t = FoldForSearch(t);
-         for (char& c : t)
-            if (c == '-' || c == '_')
-               c = ' ';
-      };
-      auto strip = [](const std::string& t) {
-         std::string o;
-         for (char c : t)
-            if (c != ' ')
-               o += c;
-         return o;
-      };
-      norm(hay);
-      norm(q);
-      if (hay.find(q) != std::string::npos)
-         return true;
-      const std::string qs = strip(q);
-      return !qs.empty() && strip(hay).find(qs) != std::string::npos;
-   }
+   // NodeSearchMatches / NodeSearchRank / FoldForSearch live in NodeSearch.cpp
+   // (self-contained, headless-testable); they are declared in AppShared.h.
 
 
    // Registered node names are the patch-file keys and must not change, so

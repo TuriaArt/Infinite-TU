@@ -183,6 +183,12 @@ bool TextFocusClaimed();
 bool ApplyViewHotkeys(float& azimuth, float& elevation, const std::function<void()>& onWillChange = nullptr);
 
 bool NodeSearchMatches(std::string hay, std::string q);
+// Rank a node type against a (already lowered) query for incremental ordering:
+// 0 = the folded display name starts with the query (prefix - floats to top),
+// 1 = the query appears as a substring of the haystack, -1 = no match. An empty
+// query ranks every type 0 so browse order is untouched. Folding reuses the same
+// FoldForSearch + -/_ to space rules as NodeSearchMatches.
+int NodeSearchRank(const std::string& name, const std::string& category, std::string q);
 
 std::string DisplayName(const std::string& name);
 

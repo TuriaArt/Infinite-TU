@@ -646,11 +646,21 @@ void DrawSidePanels(FrameCtx& fc)
                      matches.emplace_back(name, category);
                   }
                }
+               // Incremental ranking (NodeSearchRank) floats prefix matches to the
+               // top; with an empty query every rank is 0 and the chosen sort (name
+               // or favourites) decides, so browse behaviour is unchanged.
+               auto rk = [](const std::pair<std::string, std::string>& t, const std::string& query) {
+                  return NodeSearchRank(t.first, t.second, query);
+               };
                if (sortByFav)
                {
                   std::stable_sort(matches.begin(), matches.end(),
-                                    [](const std::pair<std::string, std::string>& a,
+                                    [&](const std::pair<std::string, std::string>& a,
                                        const std::pair<std::string, std::string>& b) {
+                     const int ra = rk(a, q), rb = rk(b, q);
+                     const int sa = ra < 0 ? 2 : ra, sb = rb < 0 ? 2 : rb;
+                     if (sa != sb)
+                        return sa < sb;
                      const bool favA = gBrowserFavorites.IsFavoriteModule(a.first);
                      const bool favB = gBrowserFavorites.IsFavoriteModule(b.first);
                      if (favA != favB)
@@ -664,8 +674,12 @@ void DrawSidePanels(FrameCtx& fc)
                   // name (see ILess) so entries differing only in case don't
                   // shuffle between frames.
                   std::stable_sort(matches.begin(), matches.end(),
-                                    [](const std::pair<std::string, std::string>& a,
+                                    [&](const std::pair<std::string, std::string>& a,
                                        const std::pair<std::string, std::string>& b) {
+                     const int ra = rk(a, q), rb = rk(b, q);
+                     const int sa = ra < 0 ? 2 : ra, sb = rb < 0 ? 2 : rb;
+                     if (sa != sb)
+                        return sa < sb;
                      return ILess(a.first, b.first);
                   });
                }
@@ -729,6 +743,18 @@ void DrawSidePanels(FrameCtx& fc)
                   }
                   if (matches.empty())
                      continue;
+                  // With a query, rank within the category so prefix matches
+                  // float to the top (stable_sort keeps registration order on ties);
+                  // an empty query leaves the registration order untouched.
+                  if (!q.empty())
+                     std::stable_sort(matches.begin(), matches.end(), [&q, &category](const std::string& a, const std::string& b) {
+                        const int ra = NodeSearchRank(a, category, q);
+                        const int rb = NodeSearchRank(b, category, q);
+                        const int sa = ra < 0 ? 2 : ra, sb = rb < 0 ? 2 : rb;
+                        if (sa != sb)
+                           return sa < sb;
+                        return ILess(DisplayName(a), DisplayName(b));
+                     });
                   if (gModulesFilter.descending)
                      std::reverse(matches.begin(), matches.end());
 

@@ -398,6 +398,20 @@ void DrawPopupsB(FrameCtx& fc)
                if (NodeSearchMatches(hay, q))
                   matches.push_back(t);
             }
+            // Incremental ranking: prefix matches float to the top, then by category
+            // and name. stable_sort keeps ties in registration order. NodeSearchRank
+            // returns 0 (prefix) / 1 (substring) / -1 (no match); -1 sorts last.
+            std::stable_sort(matches.begin(), matches.end(), [&q](const auto& a, const auto& b) {
+               const int ra = NodeSearchRank(a.first, a.second, q);
+               const int rb = NodeSearchRank(b.first, b.second, q);
+               const int sa = ra < 0 ? 2 : ra, sb = rb < 0 ? 2 : rb;
+               if (sa != sb)
+                  return sa < sb;
+               const std::string ca = DisplayName(a.second), cb = DisplayName(b.second);
+               if (ca != cb)
+                  return ILess(ca, cb);
+               return ILess(DisplayName(a.first), DisplayName(b.first));
+            });
             if (dimByPort)
                std::stable_partition(matches.begin(), matches.end(), [&](const auto& t) {
                   return suggestedSet.find(t) != suggestedSet.end();

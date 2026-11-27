@@ -1329,6 +1329,42 @@ namespace app
             check(c.find("Gemini: Lowered the cutoff.") != std::string::npos && c.find("make a pad") == std::string::npos, "an agent catches up on what others said since");
          }
       }
+
+      // Node-search ranking (docs: incremental node filter). NodeSearchRank lives
+      // in NodeSearch.cpp; the fold and prefix/substring/no-match values are
+      // independent of the live node catalog, so they are checked here.
+      {
+         // FoldForSearch: lowercases and strips accents.
+         check(app::FoldForSearch("Café") == "cafe", "fold: accented latin folds to base");
+         check(app::FoldForSearch("ABC") == "abc", "fold: uppercase lowers");
+
+         // Empty query: everything is a rank-0 match (browse order untouched).
+         check(app::NodeSearchRank("Sine", "Sources", "") == 0, "rank: empty query is rank 0");
+         check(app::NodeSearchRank("Sampler", "Sources", "") == 0, "rank: empty query is rank 0 (sampler)");
+
+         // Prefix of the display name is rank 0 (the strongest signal).
+         check(app::NodeSearchRank("Sampler", "Sources", "samp") == 0, "rank: display-name prefix is 0");
+         check(app::NodeSearchRank("Sampler", "Sources", "sample") == 0, "rank: exact display prefix is 0");
+         check(app::NodeSearchRank("Slicer", "Sources", "slic") == 0, "rank: slicer display prefix is 0");
+         check(app::NodeSearchRank("Dynamics", "Effects", "com") == 0, "rank: dynamics->compressor prefix is 0");
+
+         // Case-insensitive (the caller lowers, fold is idempotent).
+         check(app::NodeSearchRank("Sampler", "Sources", "SAMP") == 0, "rank: case-insensitive prefix");
+
+         // Substring anywhere in the haystack is rank 1.
+         check(app::NodeSearchRank("Sampler", "Sources", "player") == 1, "rank: display-name substring is 1");
+
+         // No match is -1.
+         check(app::NodeSearchRank("Sine", "Sources", "zzz") == -1, "rank: no match is -1");
+         check(app::NodeSearchRank("Sampler", "Sources", "zzz") == -1, "rank: no match is -1 (sampler)");
+
+         // The picker/module comparators map -1 (no match) to the last sort key so
+         // matches always outrank non-matches; verify the mapping directly.
+         auto sa = [](int r) { return r < 0 ? 2 : r; };
+         check(sa(app::NodeSearchRank("Sampler", "Sources", "samp")) == 0 &&
+                   sa(app::NodeSearchRank("Sine", "Sources", "zzz")) == 2,
+               "rank: no-match sorts after prefix/substring matches");
+      }
       std::printf("CHATTEST %s\n", ok ? "PASS" : "FAIL");
       return ok;
    }

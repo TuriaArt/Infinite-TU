@@ -10,59 +10,8 @@
 
 namespace app
 {
-   // Lowercases (incl. Cyrillic) and strips accents so the dropdown search finds "cafe" from "café". Covers the
-   // Latin-1 supplement and Latin Extended-A (U+00C0..U+017F), which is every accented letter
-   // that shows up in node, device and preset names; anything else passes through unchanged.
-   std::string FoldForSearch(const std::string& in)
-   {
-      static const char* const kFold[0x180 - 0xC0] = {
-         "a", "a", "a", "a", "a", "a", "ae", "c", "e", "e", "e", "e", "i", "i", "i", "i",
-         "d", "n", "o", "o", "o", "o", "o", "", "o", "u", "u", "u", "u", "y", "th", "ss",
-         "a", "a", "a", "a", "a", "a", "ae", "c", "e", "e", "e", "e", "i", "i", "i", "i",
-         "d", "n", "o", "o", "o", "o", "o", "", "o", "u", "u", "u", "u", "y", "th", "y",
-         "a", "a", "a", "a", "a", "a", "c", "c", "c", "c", "c", "c", "c", "c", "d", "d",
-         "d", "d", "e", "e", "e", "e", "e", "e", "e", "e", "e", "e", "g", "g", "g", "g",
-         "g", "g", "g", "g", "h", "h", "h", "h", "i", "i", "i", "i", "i", "i", "i", "i",
-         "i", "i", "ij", "ij", "j", "j", "k", "k", "k", "l", "l", "l", "l", "l", "l", "l",
-         "l", "l", "l", "n", "n", "n", "n", "n", "n", "n", "n", "n", "o", "o", "o", "o",
-         "o", "o", "oe", "oe", "r", "r", "r", "r", "r", "r", "s", "s", "s", "s", "s", "s",
-         "s", "s", "t", "t", "t", "t", "t", "t", "u", "u", "u", "u", "u", "u", "u", "u",
-         "u", "u", "u", "u", "w", "w", "y", "y", "y", "z", "z", "z", "z", "z", "z", "s"
-      };
-      std::string out;
-      out.reserve(in.size());
-      for (size_t i = 0; i < in.size(); i++)
-      {
-         const unsigned char c = (unsigned char)in[i];
-         if (c < 0x80)
-            out += (char)std::tolower(c);
-         else if ((c == 0xC3 || c == 0xC4 || c == 0xC5) && i + 1 < in.size())
-         {
-            const unsigned cp = ((c & 0x1Fu) << 6) | ((unsigned char)in[i + 1] & 0x3Fu);
-            out += kFold[cp - 0xC0];
-            i++;
-         }
-         else if ((c == 0xD0 || c == 0xD1) && i + 1 < in.size())
-         {
-            // Cyrillic: U+0410..042F -> 0430..044F, U+0400..040F -> 0450..045F, yo -> ye.
-            const unsigned cp = ((c & 0x1Fu) << 6) | ((unsigned char)in[i + 1] & 0x3Fu);
-            unsigned lo = cp;
-            if (cp >= 0x410 && cp <= 0x42F)
-               lo = cp + 0x20;
-            else if (cp >= 0x400 && cp <= 0x40F)
-               lo = cp + 0x50;
-            if (lo == 0x451)
-               lo = 0x435;
-            out += (char)(0xC0 | (lo >> 6));
-            out += (char)(0x80 | (lo & 0x3F));
-            i++;
-         }
-         else
-            out += (char)c;
-      }
-      return out;
-   }
-
+   // FoldForSearch lives in NodeSearch.cpp (self-contained, headless-testable);
+   // it is declared in AppShared.h.
 
    // A user picked row `i` in the dropdown popup. One click is one undo entry
    // holding the pre-click state, and this is it. The onSelect lambdas are
