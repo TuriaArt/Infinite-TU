@@ -40,6 +40,13 @@ namespace chat
    // action block is reported (validJson == false, err set) instead of failing the parse.
    ProtocolReply ParseProtocol(const std::string& reply);
 
+   // Propose reference gate: every $N.field in a propose's calls must point at an earlier call
+   // in the same propose. Empty string = the propose is valid (see the executor's resolution).
+   std::string ValidateProposeRefs(const nlohmann::json& propose);
+
+   // The TOOL: block is read-only by design; edit methods exist only inside a propose's calls.
+   bool IsReadOnlyToolName(const std::string& name);
+
    // Repair a model's over-escaped JSON text: drops the backslash before structural quotes
    // (a quote the model escaped at the token level) and collapses runs of backslashes inside
    // strings (a double-escaped quote is three backslashes before a quote, which is one too

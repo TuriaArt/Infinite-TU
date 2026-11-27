@@ -1,5 +1,6 @@
 // RPC command handler (moved verbatim from main.cpp).
 #include "core/CookProbe.h"
+#include "core/chat/LocalProtocol.h"
 #include "app/ui/design/Tokens.gen.h"
 #include "core/PatchReach.h"
 #include <chrono>
@@ -996,6 +997,14 @@ namespace app
          if (!params.contains("calls") || !params["calls"].is_array())
          {
             outError = "propose needs a 'calls' array of {method, params}";
+            return false;
+         }
+         // Reference gate: every $N must point at an earlier call in the same propose. Reject
+         // before any state is touched, with an error the model can act on in its next turn.
+         const std::string refErr = chat::ValidateProposeRefs(params);
+         if (!refErr.empty())
+         {
+            outError = refErr;
             return false;
          }
          const std::string label = params.value("label", std::string());

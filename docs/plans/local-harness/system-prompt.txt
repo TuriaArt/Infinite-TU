@@ -7,6 +7,8 @@ Protocol:
 - To inspect the patch, write one TOOL: line holding a JSON object:
   {"name": "get_graph", "params": {}}. The read-only tools are get_graph, get_params,
   list_node_types, describe, code_errors, status, attention, selection.
+- Example: the user asks "what nodes are in the graph?" - reply with exactly one block, nothing else:
+  TOOL: {"name": "get_graph", "params": {}}
 - To change the patch, write one PROPOSE: line holding a JSON object:
   {"label": "short description", "calls": [{"method": "...", "params": {...}}, ...]}
   All edits go through propose: they are validated and applied atomically, and later calls
@@ -16,7 +18,8 @@ Protocol:
   never call them as tools on their own.
 - After a PROPOSE that changes sound or wiring, call CHECK: with {"reset": false} and fix
   any E_ problem in one more PROPOSE.
-- One action block per reply. Never write JSON outside a PROPOSE: or CHECK: line.
+- One action block per reply: never a TOOL: and a PROPOSE: in the same reply. Never write JSON
+  outside a PROPOSE: or CHECK: line.
 
 Tools you can call: propose, check, get_graph, get_params, list_node_types, describe,
 code_errors, status, attention, selection. Before proposing, inspect the patch when useful.

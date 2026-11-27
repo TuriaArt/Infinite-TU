@@ -636,7 +636,57 @@ namespace chat
             }
             parseErrors = 0;
 
+            // The TOOL: block is read-only by design; an edit method in it is unusable, the same
+            // way as a broken JSON block - the model gets one correction attempt.
+            if (a.kind == ProtocolKind::Tool && !IsReadOnlyToolName(method))
+            {
+               const std::string err = "the TOOL: block can only call a read-only tool (get_graph, get_params, "
+                                       "list_node_types, describe, code_errors, status, attention, selection); "
+                                       "edit methods go in a PROPOSE";
+               ++parseErrors;
+               AgentEvent tr;
+               tr.kind = AgentEvent::Kind::ToolResult;
+               tr.error = true;
+               tr.text = a.tag + ": " + err;
+               PushEvent(std::move(tr));
+               messages.push_back({
+                  { "role", "user" },
+                  { "content", "Your " + a.tag + " block could not be used: " + err + ". Reply with one corrected " + a.tag + " block." }
+               });
+               if (parseErrors > cfg.maxParseErrors)
+               {
+                  hadError = true;
+                  finalError = "The model kept sending unusable command blocks.";
+                  break;
+               }
+               continue;
+            }
+
             const nlohmann::json result = ExecuteToolOnMain(method, a.raw);
+            if (method == "propose" && result.is_object() && result.value("ok", false) == false)
+            {
+               // A rejected propose (e.g. a $N reference with no earlier call, or a failed call):
+               // tell the model what went wrong so it can answer with one corrected PROPOSE -
+               // bounded by the same budget as unparseable blocks (max 2 correction attempts).
+               const std::string err = result.value("error", std::string());
+               ++parseErrors;
+               AgentEvent tr;
+               tr.kind = AgentEvent::Kind::ToolResult;
+               tr.error = true;
+               tr.text = "propose rejected: " + err;
+               PushEvent(std::move(tr));
+               messages.push_back({
+                  { "role", "user" },
+                  { "content", "Your propose was rejected: " + err + ". Reply with one corrected PROPOSE block." }
+               });
+               if (parseErrors > cfg.maxParseErrors)
+               {
+                  hadError = true;
+                  finalError = "The model kept sending unusable command blocks.";
+                  break;
+               }
+               continue;
+            }
             messages.push_back({
                { "role", "user" },
                { "content", "Result of your " + method + " call: " + result.dump() }

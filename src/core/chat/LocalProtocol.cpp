@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 
 namespace chat
 {
@@ -47,24 +48,6 @@ namespace
       tag = UpperAscii(line.substr(0, nameEnd));
       rest = line.substr(j);
       return true;
-   }
-
-   void CloseAction(ProtocolBlock& block, ProtocolReply& out)
-   {
-      if (block.kind == ProtocolKind::Propose || block.kind == ProtocolKind::Check || block.kind == ProtocolKind::Tool)
-      {
-         if (!out.hasAction)
-         {
-            block.validJson = ParseActionJson(block.raw, block.json, block.err);
-            out.hasAction = true;
-            out.action = block;
-         }
-         else
-         {
-            out.multipleActions = true;
-         }
-      }
-      block = ProtocolBlock{};
    }
 
    // Second repair candidate: drop every backslash that directly precedes a quote, whatever the
@@ -146,7 +129,7 @@ namespace
 ProtocolReply ParseProtocol(const std::string& reply)
 {
    ProtocolReply out;
-   ProtocolBlock actionBlock;
+   std::vector<ProtocolBlock> actions;  // every action block in the reply, in order
    std::vector<std::string> textParts;
    bool inAction = false;
 
@@ -167,33 +150,24 @@ ProtocolReply ParseProtocol(const std::string& reply)
       if (SplitTagLine(line, tag, rest))
       {
          if (inAction)
-            CloseAction(actionBlock, out), inAction = false;
+            inAction = false;
          if (tag == "TEXT")
          {
             textParts.push_back(rest);
          }
          else if (tag == "PROPOSE")
          {
-            actionBlock = ProtocolBlock{};
-            actionBlock.kind = ProtocolKind::Propose;
-            actionBlock.tag = "PROPOSE";
-            actionBlock.raw = rest;
+            actions.push_back(ProtocolBlock{ ProtocolKind::Propose, "PROPOSE", rest, false, {}, {} });
             inAction = true;
          }
          else if (tag == "CHECK")
          {
-            actionBlock = ProtocolBlock{};
-            actionBlock.kind = ProtocolKind::Check;
-            actionBlock.tag = "CHECK";
-            actionBlock.raw = rest;
+            actions.push_back(ProtocolBlock{ ProtocolKind::Check, "CHECK", rest, false, {}, {} });
             inAction = true;
          }
          else if (tag == "TOOL")
          {
-            actionBlock = ProtocolBlock{};
-            actionBlock.kind = ProtocolKind::Tool;
-            actionBlock.tag = "TOOL";
-            actionBlock.raw = rest;
+            actions.push_back(ProtocolBlock{ ProtocolKind::Tool, "TOOL", rest, false, {}, {} });
             inAction = true;
          }
          else
@@ -206,8 +180,8 @@ ProtocolReply ParseProtocol(const std::string& reply)
       }
       else if (inAction)
       {
-         actionBlock.raw += "\n";
-         actionBlock.raw += line;
+         actions.back().raw += "\n";
+         actions.back().raw += line;
       }
       else
       {
@@ -217,14 +191,89 @@ ProtocolReply ParseProtocol(const std::string& reply)
       if (nl == std::string::npos)
          break;
    }
-   if (inAction)
-      CloseAction(actionBlock, out);
+
+   // Tolerant selection: a reply may carry several blocks (a weak model often sends TEXT +
+   // TOOL + PROPOSE at once). One action runs - the highest-priority kind present, and among
+   // equals the LAST one (the model's most recent intent wins). Priority: PROPOSE > CHECK > TOOL.
+   if (!actions.empty())
+   {
+      int bestPri = -1;
+      size_t best = 0;
+      for (size_t i = 0; i < actions.size(); ++i)
+      {
+         const int pri = actions[i].kind == ProtocolKind::Propose ? 3 :
+                         actions[i].kind == ProtocolKind::Check ? 2 : 1;
+         if (pri >= bestPri)
+            bestPri = pri, best = i;
+      }
+      out.action = actions[best];
+      out.hasAction = true;
+      out.multipleActions = actions.size() > 1;
+      out.action.validJson = ParseActionJson(out.action.raw, out.action.json, out.action.err);
+   }
 
    for (const std::string& part : textParts)
       if (!part.empty())
          out.text = out.text.empty() ? part : out.text + "\n" + part;
 
    return out;
+}
+
+// Propose reference gate. Every $N.field string in a call's params is resolved by the executor
+// against the results of the calls before it, so a reference must point at an EARLIER call in
+// the same propose - never at the current call, a later one, or nothing at all. Weak models
+// emit "$0...." with no prior call (dry-run 2); rejecting that here, before anything runs, gives
+// the model an actionable error instead of a confusing downstream failure. Empty string = valid.
+std::string ValidateProposeRefs(const nlohmann::json& propose)
+{
+   if (!propose.is_object())
+      return {};
+   const nlohmann::json& calls = propose.value("calls", nlohmann::json::array());
+   if (!calls.is_array())
+      return {};
+   for (size_t i = 0; i < calls.size(); ++i)
+   {
+      const nlohmann::json& call = calls[i];
+      if (!call.is_object())
+         continue;
+      const nlohmann::json params = call.value("params", nlohmann::json::object());
+      if (!params.is_object())
+         continue;
+      for (const auto& [name, value] : params.items())
+      {
+         if (!value.is_string())
+            continue;
+         const std::string& text = value.get<std::string>();
+         // The executor resolves "$N.field" (digits, a dot, a field name); anything else is
+         // passed through untouched.
+         if (text.size() < 3 || text[0] != '$')
+            continue;
+         const size_t dot = text.find('.');
+         if (dot == std::string::npos || dot == 1)
+            continue;
+         const std::string num = text.substr(1, dot - 1);
+         if (num.find_first_not_of("0123456789") != std::string::npos)
+            continue;
+         const long at = std::strtol(num.c_str(), nullptr, 10);
+         if (at < 0 || (size_t)at >= i)
+            return "call " + std::to_string(i) + " references $" + num + ", but every $N must point at an earlier call in the same propose";
+      }
+   }
+   return {};
+}
+
+// The TOOL: block is read-only by design: inspect the patch, never change it. Edit methods
+// (create_node, set_param, connect, ...) exist only inside a propose's calls.
+bool IsReadOnlyToolName(const std::string& name)
+{
+   static const char* const kReadOnly[] = {
+      "get_graph", "get_params", "list_node_types", "describe",
+      "code_errors", "status", "attention", "selection",
+   };
+   for (const char* t : kReadOnly)
+      if (name == t)
+         return true;
+   return false;
 }
 
 std::string NormalizeActionText(const std::string& raw)

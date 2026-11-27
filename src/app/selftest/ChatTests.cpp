@@ -590,12 +590,41 @@ namespace app
                check(pr.hasAction && pr.action.validJson && pr.action.json["label"] == "x" && pr.action.json["calls"].empty(),
                      "protocol: pretty-printed JSON across lines");
             }
-            // Two action blocks: the first wins, the rest are noted.
+            // Tolerant selection: with several blocks the highest-priority kind runs, and among
+            // equals the LAST one (the model's most recent intent wins). Dry-run 2 shape:
+            // TEXT + TOOL + PROPOSE in one reply.
+            {
+               const ProtocolReply pr = chat::ParseProtocol(
+                  "TEXT: I'll look and then edit.\n"
+                  "TOOL: {\"name\": \"get_graph\", \"params\": {}}\n"
+                  "PROPOSE: {\"label\": \"sine\", \"calls\": [{\"method\": \"create_node\", \"params\": {}}]}\n");
+               check(pr.hasAction && pr.multipleActions && pr.action.kind == ProtocolKind::Propose &&
+                     pr.action.json["label"] == "sine", "protocol: text+tool+propose: the propose runs");
+            }
+            // Priority beats position: a later TOOL cannot override an earlier PROPOSE.
+            {
+               const ProtocolReply pr = chat::ParseProtocol(
+                  "TEXT: editing.\n"
+                  "PROPOSE: {\"label\": \"sine\", \"calls\": []}\n"
+                  "TOOL: {\"name\": \"get_graph\", \"params\": {}}\n");
+               check(pr.hasAction && pr.action.kind == ProtocolKind::Propose && pr.action.json["label"] == "sine",
+                     "protocol: an earlier propose beats a later tool");
+            }
+            // CHECK ranks above TOOL.
+            {
+               const ProtocolReply pr = chat::ParseProtocol(
+                  "TEXT: checking.\n"
+                  "TOOL: {\"name\": \"status\", \"params\": {}}\n"
+                  "CHECK: {\"reset\": false}\n");
+               check(pr.hasAction && pr.action.kind == ProtocolKind::Check && pr.action.validJson,
+                     "protocol: check ranks above tool");
+            }
+            // Two action blocks of the same kind: the last one runs.
             {
                const ProtocolReply pr = chat::ParseProtocol(
                   "PROPOSE: {\"label\": \"a\", \"calls\": []}\nPROPOSE: {\"label\": \"b\", \"calls\": []}\n");
-               check(pr.hasAction && pr.multipleActions && pr.action.json["label"] == "a",
-                     "protocol: two proposes: the first runs, the rest are ignored");
+               check(pr.hasAction && pr.multipleActions && pr.action.json["label"] == "b",
+                     "protocol: two proposes: the last one runs");
             }
             // An unknown tag stays in the text and is noted.
             {
@@ -685,11 +714,46 @@ namespace app
             std::filesystem::remove_all(root, ec);
          }
 
-         // A TOOL block is an action like the others.
+         // A TOOL block is an action like the others. The inspect criterion is ANY valid read-only
+         // tool, not specifically get_graph (dry-run 1 answered with list_node_types).
          {
+            using chat::ProtocolKind;
+            using chat::ProtocolReply;
             const ProtocolReply pr = chat::ParseProtocol("TEXT: looking\nTOOL: {\"name\": \"get_graph\", \"params\": {}}\n");
             check(pr.hasAction && pr.action.kind == ProtocolKind::Tool && pr.action.validJson &&
                   pr.action.json["name"] == "get_graph", "protocol: a TOOL block parses with its name");
+            const ProtocolReply pr2 = chat::ParseProtocol("TOOL: {\"name\": \"list_node_types\", \"params\": {}}\n");
+            check(pr2.hasAction && pr2.action.kind == ProtocolKind::Tool && pr2.action.validJson &&
+                  pr2.action.json["name"] == "list_node_types", "protocol: a TOOL block parses any read-only tool");
+            check(chat::IsReadOnlyToolName("get_graph") && chat::IsReadOnlyToolName("list_node_types") &&
+                  !chat::IsReadOnlyToolName("create_node") && !chat::IsReadOnlyToolName("set_param"),
+                  "protocol: the TOOL name whitelist is read-only only");
+         }
+
+         // Propose reference gate: every $N must point at an earlier call in the same propose.
+         {
+            nlohmann::json good = { {"label", "x"}, {"calls", nlohmann::json::array()} };
+            check(chat::ValidateProposeRefs(good).empty(), "refs: a propose without references is valid");
+            nlohmann::json withRef = {
+               {"label", "x"},
+               {"calls", {
+                  {{"method", "create_node"}, {"params", {{"typeName", "Sine"}}}},
+                  {{"method", "set_param"}, {"params", {{"node", "$0.index"}}}}
+               }}
+            };
+            check(chat::ValidateProposeRefs(withRef).empty(), "refs: a $0 in the second call is valid");
+            nlohmann::json badCall = {{"method", "set_param"}, {"params", {{"node", "$0.nodes.0"}}}};
+            nlohmann::json badRef = {{"label", "x"}, {"calls", nlohmann::json::array({badCall})}};
+            const std::string err = chat::ValidateProposeRefs(badRef);
+            check(!err.empty() && err.find("$0") != std::string::npos && err.find("earlier call") != std::string::npos,
+                  "refs: a $0 in the first call is rejected with a clear error");
+            nlohmann::json laterCalls = nlohmann::json::array({
+               {{"method", "create_node"}, {"params", {{"typeName", "Sine"}}}},
+               {{"method", "set_param"}, {"params", {{"node", "$2.index"}}}}
+            });
+            nlohmann::json laterRef = {{"label", "x"}, {"calls", laterCalls}};
+            check(!chat::ValidateProposeRefs(laterRef).empty(), "refs: a reference to a later call is rejected");
+            check(chat::ValidateProposeRefs(nlohmann::json::object()).empty(), "refs: an object without calls is valid");
          }
 
          // Escape-sequence normalization (the model's double-escaping and stray backslashes).
