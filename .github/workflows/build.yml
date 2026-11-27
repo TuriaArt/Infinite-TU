@@ -43,9 +43,9 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "Run only one platform (a manual run; a push always runs everything)"
+        description: "Run a single platform or just Windows x64 (a push runs everything)"
         type: choice
-        options: [all, windows, linux, macos]
+        options: [all, windows, windows-x64, linux, macos]
         default: all
 
 # On branches, a force-push mid-run should cancel the superseded run, not
@@ -74,7 +74,7 @@ jobs:
         run: |
           only="${{ inputs.only }}"
           [ -z "$only" ] && only=all
-          if [ -f src/platform/win/PlatformWin.cpp ] && { [ "$only" = all ] || [ "$only" = windows ]; }; then
+          if [ -f src/platform/win/PlatformWin.cpp ] && { [ "$only" = all ] || [ "$only" = windows ] || [ "$only" = windows-x64 ]; }; then
             echo "has_windows=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_windows=false" >> "$GITHUB_OUTPUT"
@@ -113,6 +113,8 @@ jobs:
       # translations, workflow syntax. Same command as tools/ci/preflight.py --fast on the Mac.
       - name: Drift checks (test lists, baselines, translations, workflows)
         run: python3 tools/ci/preflight.py --fast
+      - name: Windows build workflow recovery checks
+        run: python3 tests/ci/test_windows_workflow.py
 
   worker-and-mcp-tests:
     name: Worker & MCP unit tests
@@ -227,12 +229,10 @@ jobs:
     continue-on-error: ${{ matrix.arch == 'ARM64' }}
     strategy:
       fail-fast: false
+      # Manual x64-only runs avoid a second, long ARM64 compilation. Existing
+      # pushes and `only=windows` still exercise both architectures.
       matrix:
-        include:
-          - arch: x64
-            runner: windows-2022
-          - arch: ARM64
-            runner: windows-11-arm
+        include: ${{ fromJSON(inputs.only == 'windows-x64' && '[{"arch":"x64","runner":"windows-2022"}]' || '[{"arch":"x64","runner":"windows-2022"},{"arch":"ARM64","runner":"windows-11-arm"}]') }}
 
     steps:
       - uses: actions/checkout@v4
@@ -276,6 +276,43 @@ jobs:
       # MSB1031 "Specify the maximum number of CPUs" when passed this way.
       - name: Build
         run: cmake --build build --config Release -- /maxcpucount:2
+
+      # Preserve a portable, unsigned build before tests, signing and the
+      # installer. It is a recovery artifact, NOT a validated release. If any
+      # later step fails, downloading it avoids another full compilation.
+      - name: Stage
+        shell: bash
+        run: |
+          mkdir -p dist/Infinite/assets/models
+          cp build/Release/Infinite.exe dist/Infinite/
+          cp build/Release/infinite-vst3-scanner.exe dist/Infinite/
+          cp build/Release/Infinite.com dist/Infinite/
+          # onnxruntime.dll + DirectML.dll (Platform::SubjectMask's backend)
+          # and the bundled u2netp model - CMakeLists.txt's POST_BUILD step
+          # already staged these next to the exe in the build tree.
+          cp build/Release/onnxruntime.dll dist/Infinite/
+          cp build/Release/DirectML.dll dist/Infinite/
+          # onnxruntime.dll imports the VC++ runtime; ship it app-local so a
+          # clean Windows needs no redistributable install.
+          cp build/Release/msvcp140*.dll build/Release/vcruntime140*.dll dist/Infinite/
+          cp build/Release/concrt140*.dll dist/Infinite/ 2>/dev/null || true
+          cp build/Release/assets/models/u2netp.onnx dist/Infinite/assets/models/
+          # Resources/ (fonts, icons, drumkits/infinite-basic) is what
+          # BundledResourcePath() finds next to the exe; the POST_BUILD copy
+          # fills it. Without it the Drum Sequencer's groove picker has no kit.
+          cp -r build/Release/Resources dist/Infinite/
+          cp README.md LICENSE dist/Infinite/ 2>/dev/null || true
+          cp -r dist-plugins dist/Infinite/Plugins
+
+      - name: Upload unverified Windows x64 recovery build
+        if: matrix.arch == 'x64'
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: Infinite-windows-x64-unverified
+          path: dist/Infinite
+          if-no-files-found: error
+          retention-days: 3
 
       # Skipped on ARM64: the x64 runner's binary is native there, but an
       # ARM64 binary cannot be executed by an x64 host and vice versa. The
@@ -419,32 +456,6 @@ jobs:
           name: plugin-logs-windows
           path: plugin-logs
           if-no-files-found: ignore
-
-      # package.ps1 is the local developer path (it drives its own configure
-      # and hardcodes x64); here the build already exists, so just stage it.
-      - name: Stage
-        shell: bash
-        run: |
-          mkdir -p dist/Infinite/assets/models
-          cp build/Release/Infinite.exe dist/Infinite/
-          cp build/Release/infinite-vst3-scanner.exe dist/Infinite/
-          cp build/Release/Infinite.com dist/Infinite/
-          # onnxruntime.dll + DirectML.dll (Platform::SubjectMask's backend)
-          # and the bundled u2netp model - CMakeLists.txt's POST_BUILD step
-          # already staged these next to the exe in the build tree.
-          cp build/Release/onnxruntime.dll dist/Infinite/
-          cp build/Release/DirectML.dll dist/Infinite/
-          # onnxruntime.dll imports the VC++ runtime; ship it app-local so a
-          # clean Windows needs no redistributable install.
-          cp build/Release/msvcp140*.dll build/Release/vcruntime140*.dll dist/Infinite/
-          cp build/Release/concrt140*.dll dist/Infinite/ 2>/dev/null || true
-          cp build/Release/assets/models/u2netp.onnx dist/Infinite/assets/models/
-          # Resources/ (fonts, icons, drumkits/infinite-basic) is what
-          # BundledResourcePath() finds next to the exe; the POST_BUILD copy
-          # fills it. Without it the Drum Sequencer's groove picker has no kit.
-          cp -r build/Release/Resources dist/Infinite/
-          cp README.md LICENSE dist/Infinite/ 2>/dev/null || true
-          cp -r dist-plugins dist/Infinite/Plugins
 
       # Every DLL in the zip (ours and bundled third-party ones such as
       # onnxruntime.dll) may import the VC++ runtime. Assert each one it names
