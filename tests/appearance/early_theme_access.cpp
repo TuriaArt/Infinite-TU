@@ -6,11 +6,16 @@
 #ifdef _MSC_VER
 #pragma init_seg(lib) // before normal user-segment globals, independently of link order
 #endif
-static const bool earlyIsLight = CategoryColors::IsThemeLight();
+struct EarlyThemeProbe
+{
+   bool light;
+   EarlyThemeProbe() : light(CategoryColors::IsThemeLight()) {}
+};
+static EarlyThemeProbe early;
 
 int main()
 {
-   if (earlyIsLight != CategoryColors::IsThemeLight())
+   if (early.light != CategoryColors::IsThemeLight())
       return 1;
    std::puts("Early theme access OK");
    return 0;
