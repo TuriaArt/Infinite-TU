@@ -33,6 +33,7 @@ namespace
       "  All edits go through propose: they are validated and applied atomically, and later calls\n"
       "  may reference earlier results with $0.index etc. Never use $0 or $N when no call has\n"
       "  come before it in this same propose: every reference must point at an earlier call.\n"
+      "  The label field in PROPOSE must be in the user's language.\n"
       "- Edit methods (create_node, set_param, connect, ...) exist only inside a propose's calls:\n"
       "  never call them as tools on their own.\n"
       "- After a PROPOSE that changes sound or wiring, call CHECK: with {\"reset\": false} and fix\n"

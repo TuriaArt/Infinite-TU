@@ -679,6 +679,8 @@ namespace app
                      c.tools == chat::DefaultHarnessTools() && c.maxSteps == 12 && c.maxParseErrors == 2 && !c.allowMultiAction,
                      "harness: no pack means built-in defaults");
                check(chat::LoadHarnessConfig("bad id!").source == "builtin", "harness: an invalid pack id means built-in defaults");
+               check(c.systemPrompt.find("The label field in PROPOSE must be in the user's language") != std::string::npos,
+                     "harness: the prompt requires the label in the user's language");
             }
             // A pack with harness.json: mode, prompt, tool subset, clamped limits.
             {
