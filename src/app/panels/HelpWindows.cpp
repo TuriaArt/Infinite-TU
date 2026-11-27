@@ -7,6 +7,7 @@
 #include "app/AppShared.h"
 #include "app/ui/design/components/FormParts.h"
 #include "app/ui/design/UiScope.h"
+#include "app/ui/design/Keymap.h"
 
 // The Terminal's own keys (copy, paste, find, tabs, clear): Cmd on macOS, Ctrl+Shift elsewhere,
 // so plain Ctrl still reaches the shell (TerminalPanel.cpp HandleKeyboard).
@@ -31,6 +32,52 @@ namespace app
       for (size_t at; (at = b.find("{mod}")) != std::string::npos;)
          b.replace(at, 5, MODKEY);
       return b.c_str();
+   }
+
+   // Help copy: these windows render plain (non-selectable) text, so "Copy all" collects the window's text
+   // as it is drawn into one buffer and puts it on the clipboard. The buffer is reset at the start of each
+   // window's draw; the menu click is handled inside that window's own draw, so it always copies the window
+   // it was opened in. Full drag-selection stays for a later pass.
+   static std::string sHelpCopyBuf;
+   static void HelpCopyReset() { sHelpCopyBuf.clear(); }
+   static void HelpCopyAdd(const std::string& line)
+   {
+      if (!sHelpCopyBuf.empty())
+         sHelpCopyBuf += '\n';
+      sHelpCopyBuf += line;
+   }
+   static void HelpTextWrapped(const char* text)
+   {
+      ImGui::TextWrapped("%s", text);
+      HelpCopyAdd(text);
+   }
+   static void HelpTextUnformatted(const char* text)
+   {
+      ImGui::TextUnformatted(text);
+      HelpCopyAdd(text);
+   }
+   template <typename... Args>
+   static bool HelpFoldHeader(const char* title, Args&&... args)
+   {
+      HelpCopyAdd(title);
+      return PanelKit::FoldHeader(title, std::forward<Args>(args)...);
+   }
+   // The window's own Copy all: the right-click context menu item, plus the Ctrl+Shift+C hotkey.
+   static void HelpCopyAll()
+   {
+      if (Keymap::Pressed(Keymap::Act::HelpCopyAll) && !sHelpCopyBuf.empty())
+      {
+         ImGui::SetClipboardText(sHelpCopyBuf.c_str());
+         return;
+      }
+      if (MenuParts::RightPressed() && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) &&
+          !ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId))
+         ImGui::OpenPopup("##helpCopyAllMenu");
+      if (!MenuParts::BeginPopup("##helpCopyAllMenu"))
+         return;
+      if (MenuParts::Item(L("Copy all"), Keymap::Text(Keymap::Act::HelpCopyAll), !sHelpCopyBuf.empty()))
+         ImGui::SetClipboardText(sHelpCopyBuf.c_str());
+      MenuParts::EndPopup();
    }
 
    // Per-node "Help" popup text, keyed by the exact registered typeName (the
@@ -898,6 +945,7 @@ namespace app
       { I18N_KEY("Chat"), I18N_KEY("Attach from Clipboard"), MODKEY "+V", I18N_KEY("Paste copied files or a copied picture into the message; copied text still pastes as text") },
       { I18N_KEY("Chat"), I18N_KEY("Close Picture"), "Esc", I18N_KEY("Close a picture opened full size") },
       { I18N_KEY("Chat"), I18N_KEY("Copy / Clear Selection"), MODKEY "+C / Esc", I18N_KEY("Copy the selected words of a message, or drop the selection") },
+      { I18N_KEY("Help"), I18N_KEY("Copy all"), MODKEY "+Shift+C", I18N_KEY("Copy this window's text to the clipboard") },
    };
 
    // The table as plain text for the agents (`infinite docs shortcuts`), English, this OS's keys.
@@ -981,7 +1029,7 @@ namespace app
          {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
-            ImGui::TextUnformatted(T(s.action));
+            HelpTextUnformatted(T(s.action));
 
             ImGui::TableSetColumnIndex(1);
             // Pale sky-blue reads fine on the dark table row background but
@@ -989,11 +1037,11 @@ namespace app
             // it the same way every other themed accent-text spot in the
             // app does rather than leave it a fixed dark-mode-only colour.
             ImGui::PushStyleColor(ImGuiCol_Text, app::AccentEmphasisSelected());
-            ImGui::TextUnformatted(s.key);
+            HelpTextUnformatted(s.key);
             ImGui::PopStyleColor();
 
             ImGui::TableSetColumnIndex(2);
-            ImGui::TextWrapped("%s", HelpT(s.description));   // HelpT: "{mod}" -> Cmd / Ctrl
+            HelpTextWrapped(HelpT(s.description));   // HelpT: "{mod}" -> Cmd / Ctrl
          }
       }
 
@@ -1021,10 +1069,12 @@ namespace app
          return;
       }
 
+      HelpCopyReset();
       SectionCard::BeginWindow();
       DrawShortcutsTableBody("win_");
       SectionCard::EndWindow();
       FormParts::WindowEdge();
+      HelpCopyAll();
       FloatingWindow::End();
    }
 
@@ -1046,22 +1096,23 @@ namespace app
          return;
       }
 
+      HelpCopyReset();
       SectionCard::BeginWindow();
       FormParts::PushReferenceStyle(/*headerFill=*/false);   // each section is a card; the header is its title
       SectionCard::Begin();
-      if (PanelKit::FoldHeader(L("Getting started"), true, true))
+      if (HelpFoldHeader(L("Getting started"), true, true))
       {
-         ImGui::TextWrapped("%s", T("Infinite is a node graph. Every node renders an image and passes it down a cable to the next one. A typical patch reads left to right:"));
-         ImGui::Bullet(); ImGui::TextWrapped("%s", T("Source (image, video, shape, noise, formula) makes a picture."));
-         ImGui::Bullet(); ImGui::TextWrapped("%s", T("Effects and Color nodes change it."));
-         ImGui::Bullet(); ImGui::TextWrapped("%s", T("Compositing nodes combine several pictures into one."));
-         ImGui::Bullet(); ImGui::TextWrapped("%s", T("Output shows the result, exports a PNG, or records a video."));
+         HelpTextWrapped(T("Infinite is a node graph. Every node renders an image and passes it down a cable to the next one. A typical patch reads left to right:"));
+         ImGui::Bullet(); HelpTextWrapped(T("Source (image, video, shape, noise, formula) makes a picture."));
+         ImGui::Bullet(); HelpTextWrapped(T("Effects and Color nodes change it."));
+         ImGui::Bullet(); HelpTextWrapped(T("Compositing nodes combine several pictures into one."));
+         ImGui::Bullet(); HelpTextWrapped(T("Output shows the result, exports a PNG, or records a video."));
          ImGui::Spacing();
-         ImGui::TextWrapped("%s", T("Nothing enforces that order - any output can feed any input, including back into effects for feedback-style chains."));
+         HelpTextWrapped(T("Nothing enforces that order - any output can feed any input, including back into effects for feedback-style chains."));
       }
 
       SectionCard::Begin();
-      if (PanelKit::FoldHeader(L("Controls"), true, true))
+      if (HelpFoldHeader(L("Controls"), true, true))
       {
          if (ListRow::BeginTable("controls", tok::help_windows_window_begin_table_layout, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg))
          {
@@ -1093,65 +1144,65 @@ namespace app
             for (const Row& r : rows)
             {
                ImGui::TableNextRow();
-               ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted(T(r.a));
-               ImGui::TableSetColumnIndex(1); ImGui::TextWrapped("%s", HelpT(r.b));
+               ImGui::TableSetColumnIndex(0); HelpTextUnformatted(T(r.a));
+               ImGui::TableSetColumnIndex(1); HelpTextWrapped(HelpT(r.b));
             }
             ImGui::EndTable();
          }
       }
 
       SectionCard::Begin();
-      if (PanelKit::FoldHeader(L("Transport and modulation"), true, true))
+      if (HelpFoldHeader(L("Transport and modulation"), true, true))
       {
-         ImGui::TextWrapped("%s", T("The top bar holds a global clock: Play/Pause, Rewind and BPM. Everything time-based reads from it - modulators, video playback and animated shaders - so pausing freezes the whole patch and changing the tempo retimes all of it at once."));
+         HelpTextWrapped(T("The top bar holds a global clock: Play/Pause, Rewind and BPM. Everything time-based reads from it - modulators, video playback and animated shaders - so pausing freezes the whole patch and changing the tempo retimes all of it at once."));
          ImGui::Spacing();
-         ImGui::TextWrapped("%s", T("Modulator rates are given in beats, not seconds. A rate of 4 means one cycle every four beats, so it stays in time when you change the BPM."));
+         HelpTextWrapped(T("Modulator rates are given in beats, not seconds. A rate of 4 means one cycle every four beats, so it stays in time when you change the BPM."));
          ImGui::Spacing();
-         ImGui::TextWrapped("%s", T("Every slider has a small dot to its left. Patch a modulator into that dot and the slider turns amber and becomes read-only - the value is now being driven. Delete the cable to take manual control back."));
+         HelpTextWrapped(T("Every slider has a small dot to its left. Patch a modulator into that dot and the slider turns amber and becomes read-only - the value is now being driven. Delete the cable to take manual control back."));
       }
 
       SectionCard::Begin();
-      if (PanelKit::FoldHeader(L("Arrangement timeline"), true, true))
+      if (HelpFoldHeader(L("Arrangement timeline"), true, true))
       {
-         ImGui::TextWrapped("%s", T("Shift+T opens a timeline docked beside the canvas. It does not replace the patch - it schedules it. A track ('lane') is video or audio, and every clip on it points at a node that already exists in your graph; the clip decides WHEN that node is heard or seen, not what it does."));
+         HelpTextWrapped(T("Shift+T opens a timeline docked beside the canvas. It does not replace the patch - it schedules it. A track ('lane') is video or audio, and every clip on it points at a node that already exists in your graph; the clip decides WHEN that node is heard or seen, not what it does."));
          ImGui::Spacing();
-         ImGui::TextWrapped("%s", T("To build an arrangement:"));
+         HelpTextWrapped(T("To build an arrangement:"));
          ImGui::Indent();
-         ImGui::Bullet(); ImGui::TextWrapped("%s", T("Shift+J adds a video track, Shift+K an audio track (with the timeline focused)."));
-         ImGui::Bullet(); ImGui::TextWrapped("%s", T("Drag an audio, video or image file straight onto a track - it spawns the right source node on the canvas and makes a clip for it in one step."));
-         ImGui::Bullet(); ImGui::TextWrapped("%s", T("Or drag empty track space to draw a clip, then assign a source node to it from the inspector."));
-         ImGui::Bullet(); ImGui::TextWrapped("%s", T("Double-click a clip, track or group header to open its inspector (double-click again to close it)."));
+         ImGui::Bullet(); HelpTextWrapped(T("Shift+J adds a video track, Shift+K an audio track (with the timeline focused)."));
+         ImGui::Bullet(); HelpTextWrapped(T("Drag an audio, video or image file straight onto a track - it spawns the right source node on the canvas and makes a clip for it in one step."));
+         ImGui::Bullet(); HelpTextWrapped(T("Or drag empty track space to draw a clip, then assign a source node to it from the inspector."));
+         ImGui::Bullet(); HelpTextWrapped(T("Double-click a clip, track or group header to open its inspector (double-click again to close it)."));
          ImGui::Unindent();
          ImGui::Spacing();
-         ImGui::TextWrapped("%s", T("Positions are in bars and beats, never seconds, so the whole arrangement retimes with the top bar's BPM. Audio clips from a file can follow project tempo: switch Sync on in the inspector and the clip is time-stretched by tempo / sample BPM, live, as you change the tempo. Switch it off and the clip plays at its native speed instead."));
+         HelpTextWrapped(T("Positions are in bars and beats, never seconds, so the whole arrangement retimes with the top bar's BPM. Audio clips from a file can follow project tempo: switch Sync on in the inspector and the clip is time-stretched by tempo / sample BPM, live, as you change the tempo. Switch it off and the clip plays at its native speed instead."));
          ImGui::Spacing();
-         ImGui::TextWrapped("%s", T("Video tracks composite back to front, each clip with its own blend mode, opacity and brightness/contrast/saturation grade. Audio clips carry gain, pan, pitch and fades, summed per track. A clip's waveform is drawn from what was actually played, so a clip you have not played yet shows a flat line until the playhead has crossed it once."));
+         HelpTextWrapped(T("Video tracks composite back to front, each clip with its own blend mode, opacity and brightness/contrast/saturation grade. Audio clips carry gain, pan, pitch and fades, summed per track. A clip's waveform is drawn from what was actually played, so a clip you have not played yet shows a flat line until the playhead has crossed it once."));
          ImGui::Spacing();
-         ImGui::TextWrapped("%s", T("Two clips on different tracks should not share one source node: there is one playback position per node, so they cannot be retriggered independently. The inspector warns you when that happens, with a Make Unique button that gives the clip its own copy of the node - same inputs, same modulations, its own position."));
+         HelpTextWrapped(T("Two clips on different tracks should not share one source node: there is one playback position per node, so they cannot be retriggered independently. The inspector warns you when that happens, with a Make Unique button that gives the clip its own copy of the node - same inputs, same modulations, its own position."));
          ImGui::Spacing();
-         ImGui::TextWrapped("%s", T("Right-click a track or group header to render or export just that track or group; the full patch export is still in the top bar."));
+         HelpTextWrapped(T("Right-click a track or group header to render or export just that track or group; the full patch export is still in the top bar."));
       }
 
       SectionCard::Begin();
-      if (PanelKit::FoldHeader(L("Using Feedback"), true, true))
+      if (HelpFoldHeader(L("Using Feedback"), true, true))
       {
-         ImGui::TextWrapped("%s", T("A Feedback node outputs what its input produced on the PREVIOUS frame. That one-frame delay is the whole point: it lets you wire a cycle without the graph chasing its own tail forever."));
+         HelpTextWrapped(T("A Feedback node outputs what its input produced on the PREVIOUS frame. That one-frame delay is the whole point: it lets you wire a cycle without the graph chasing its own tail forever."));
          ImGui::Spacing();
-         ImGui::TextWrapped("%s", T("Feedback on its own does nothing visible - it is a delay, not an effect. It only earns its keep inside a loop. The classic patch:"));
+         HelpTextWrapped(T("Feedback on its own does nothing visible - it is a delay, not an effect. It only earns its keep inside a loop. The classic patch:"));
          ImGui::Indent();
-         ImGui::Bullet(); ImGui::TextWrapped("%s", T("Shape (or any source)  ->  Blend input A"));
-         ImGui::Bullet(); ImGui::TextWrapped("%s", T("Feedback  ->  Blend input B"));
-         ImGui::Bullet(); ImGui::TextWrapped("%s", T("Blend  ->  transform  (scale 1.02, small rotation)"));
-         ImGui::Bullet(); ImGui::TextWrapped("%s", T("transform  ->  back into Feedback's input   <- this closes the loop"));
+         ImGui::Bullet(); HelpTextWrapped(T("Shape (or any source)  ->  Blend input A"));
+         ImGui::Bullet(); HelpTextWrapped(T("Feedback  ->  Blend input B"));
+         ImGui::Bullet(); HelpTextWrapped(T("Blend  ->  transform  (scale 1.02, small rotation)"));
+         ImGui::Bullet(); HelpTextWrapped(T("transform  ->  back into Feedback's input   <- this closes the loop"));
          ImGui::Unindent();
          ImGui::Spacing();
-         ImGui::TextWrapped("%s", T("Now every frame is the previous frame, nudged, with the source drawn over the top - which gives you infinite-zoom tunnels, echoes and growth. Set the Blend to Screen or Lighten and lower the opacity so the history fades rather than saturating."));
+         HelpTextWrapped(T("Now every frame is the previous frame, nudged, with the source drawn over the top - which gives you infinite-zoom tunnels, echoes and growth. Set the Blend to Screen or Lighten and lower the opacity so the history fades rather than saturating."));
          ImGui::Spacing();
-         ImGui::TextWrapped("%s", T("If you just want trails, use the Trails node instead - it is that same loop wrapped into one node, with decay, drift, zoom and rotation built in. Reaction Diffusion is the other pre-wired feedback node: it needs no input at all and simulates a chemical system frame over frame."));
+         HelpTextWrapped(T("If you just want trails, use the Trails node instead - it is that same loop wrapped into one node, with decay, drift, zoom and rotation built in. Reaction Diffusion is the other pre-wired feedback node: it needs no input at all and simulates a chemical system frame over frame."));
       }
 
       SectionCard::Begin();
-      if (PanelKit::FoldHeader(L("Module reference"), true, false))
+      if (HelpFoldHeader(L("Module reference"), true, false))
       {
          struct Entry { const char* name; const char* text; };
          struct Group { const char* category; std::vector<Entry> entries; };
@@ -1361,7 +1412,7 @@ namespace app
             for (const Entry& entry : group.entries)
             {
                ImGui::Bullet();
-               ImGui::TextUnformatted(entry.name);
+               HelpTextUnformatted(entry.name);
                ImGui::Indent();
                ImGui::PushTextWrapPos(0.0f);
                ImGui::TextDisabled("%s", HelpT(entry.text));
@@ -1372,24 +1423,25 @@ namespace app
       }
 
       SectionCard::Begin();
-      if (PanelKit::FoldHeader(L("Tips"), true, false))
+      if (HelpFoldHeader(L("Tips"), true, false))
       {
-         ImGui::Bullet(); ImGui::TextWrapped("%s", T("Put a Fit node before a Blend or Layer Stack when your sources are different sizes."));
-         ImGui::Bullet(); ImGui::TextWrapped("%s", T("Modulate a Switcher's 'every' with an LFO for irregular cutting."));
-         ImGui::Bullet(); ImGui::TextWrapped("%s", T("Chain a Math node off two LFOs at different rates to get slow drifting motion."));
-         ImGui::Bullet(); ImGui::TextWrapped("%s", T("A node's output can feed several inputs at once - it only renders once per frame."));
+         ImGui::Bullet(); HelpTextWrapped(T("Put a Fit node before a Blend or Layer Stack when your sources are different sizes."));
+         ImGui::Bullet(); HelpTextWrapped(T("Modulate a Switcher's 'every' with an LFO for irregular cutting."));
+         ImGui::Bullet(); HelpTextWrapped(T("Chain a Math node off two LFOs at different rates to get slow drifting motion."));
+         ImGui::Bullet(); HelpTextWrapped(T("A node's output can feed several inputs at once - it only renders once per frame."));
 #if defined(_WIN32)
-         ImGui::Bullet(); ImGui::TextWrapped(T("Settings and the last graph layout are stored in %%APPDATA%%\\Infinite."));
+         ImGui::Bullet(); HelpTextWrapped(T("Settings and the last graph layout are stored in %%APPDATA%%\\Infinite."));
 #elif defined(__linux__)
-         ImGui::Bullet(); ImGui::TextWrapped("%s", T("Settings and the last graph layout are stored in $XDG_CONFIG_HOME/Infinite (~/.config/Infinite by default)."));
+         ImGui::Bullet(); HelpTextWrapped(T("Settings and the last graph layout are stored in $XDG_CONFIG_HOME/Infinite (~/.config/Infinite by default)."));
 #else
-         ImGui::Bullet(); ImGui::TextWrapped("%s", T("Settings and the last graph layout are stored in ~/Library/Application Support/Infinite."));
+         ImGui::Bullet(); HelpTextWrapped(T("Settings and the last graph layout are stored in ~/Library/Application Support/Infinite."));
 #endif
       }
 
       SectionCard::EndWindow();
       FormParts::PopReferenceStyle();
       FormParts::WindowEdge();
+      HelpCopyAll();
       FloatingWindow::End();
    }
 }

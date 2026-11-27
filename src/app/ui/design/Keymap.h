@@ -47,7 +47,7 @@ namespace Keymap
       Undo, Redo, RedoAlt, SelectAll, SelectAllCmd, Split, Rename, FitViewF, ZoomIn, ZoomInPad, ZoomOut, ZoomOutPad,
       DeleteX, ToolSelect, ToolBlade, ToolHand,
       // app (StagePresent, FindOverlay, Musical Typing, Chat)
-      Settings, UiScaleUp, UiScaleDown, Save, Open, New, Find, OctaveDown, OctaveUp, CopyText,
+      Settings, UiScaleUp, UiScaleDown, Save, Open, New, Find, OctaveDown, OctaveUp, CopyText, HelpCopyAll,
       // canvas keyboard focus (StageLinks)
       NodeHelp, UngroupU,
       // Timeline (ArrangePanel)
@@ -135,6 +135,7 @@ namespace Keymap
          { Act::OctaveDown, ImGuiKey_Minus, Mod::None, "Musical Typing", "Octave Down" },
          { Act::OctaveUp, ImGuiKey_Equal, Mod::None, "Musical Typing", "Octave Up" },
          { Act::CopyText, ImGuiKey_C, Mod::ChordCmd, "Chat", "Copy" },
+         { Act::HelpCopyAll, ImGuiKey_C, Mod::CmdShift, "Help", "Copy all" },
          { Act::NodeHelp, ImGuiKey_H, Mod::Plain, "Canvas", "Node Help" },
          { Act::UngroupU, ImGuiKey_U, Mod::CmdPlain, "Canvas", "Ungroup" },
          { Act::TlAddVideoTrack, ImGuiKey_J, Mod::ShiftPlain, "Timeline", "Add Video Track" },
