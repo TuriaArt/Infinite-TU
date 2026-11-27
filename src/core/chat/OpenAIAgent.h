@@ -4,6 +4,8 @@
 // and falls back to plain chat without tools when a server rejects tool definitions.
 
 #include "core/chat/AgentStream.h"
+#include "core/chat/HarnessConfig.h"
+#include "platform/Platform.h"
 
 #include <atomic>
 #include <condition_variable>
@@ -32,6 +34,16 @@ namespace chat
 
    // OpenAI tool definitions matching the Infinite MCP/RPC surface (all edits via `propose`).
    nlohmann::json OpenAIAgentTools();
+
+   // Test hook (chat self-tests, docs/plans/local-harness): when set, the run loop sends each
+   // request through this instead of Platform::HttpPostStream, so a scripted model can drive
+   // the full protocol loop with no network. Empty hook = the real HTTP path.
+   using HttpPostStreamHook = std::function<bool(const std::string& url, const std::string& body,
+                                                 const std::string& bearerToken,
+                                                 const Platform::HttpStreamChunk& onChunk,
+                                                 int& outStatus, std::string& outErrorBody,
+                                                 std::string& outError, int timeoutSeconds)>;
+   void SetHttpPostStreamHook(HttpPostStreamHook hook);
 
    // Incremental SSE parser for OpenAI /chat/completions streaming responses.
    struct OpenAIToolCall
@@ -68,6 +80,14 @@ namespace chat
    bool TestOpenAIConnection(const std::string& baseUrl, const std::string& model,
                              const std::string& apiKey, std::string& outMessage);
 
+   // The model ids in an OpenAI-compatible /models response body ("{"data":[{"id":...}]}").
+   std::vector<std::string> ParseOpenAIModels(const std::string& text);
+
+   // Synchronous model list (run on a worker thread from UI): GET {base}/models, the
+   // OpenAI-compatible list endpoint Ollama and the hosted providers all answer.
+   bool ListOpenAIModels(const std::string& baseUrl, const std::string& apiKey,
+                         std::vector<std::string>& outModels, std::string& outMessage);
+
    class OpenAIAgentRun
    {
    public:
@@ -83,6 +103,7 @@ namespace chat
          std::vector<std::pair<std::string, std::string>> history; // (role, content)
          std::string userPrompt;
          int maxSteps = 12;
+         HarnessConfig harness; // protocol/tools mode, prompt and limits (HarnessConfig.h)
       };
 
       static std::shared_ptr<OpenAIAgentRun> Start(const Options& options);

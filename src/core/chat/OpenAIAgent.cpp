@@ -1,5 +1,6 @@
 #include "core/chat/OpenAIAgent.h"
 
+#include "core/chat/LocalProtocol.h"
 #include "platform/Platform.h"
 
 #include <algorithm>
@@ -339,6 +340,56 @@ namespace chat
       return true;
    }
 
+   std::vector<std::string> ParseOpenAIModels(const std::string& text)
+   {
+      std::vector<std::string> out;
+      const nlohmann::json j = nlohmann::json::parse(text, nullptr, false);
+      if (!j.is_object() || !j.contains("data") || !j["data"].is_array())
+         return out;
+      for (const nlohmann::json& m : j["data"])
+      {
+         if (!m.is_object())
+            continue;
+         const std::string id = m.value("id", std::string());
+         if (!id.empty())
+            out.push_back(id);
+      }
+      return out;
+   }
+
+   bool ListOpenAIModels(const std::string& baseUrl, const std::string& apiKey,
+                         std::vector<std::string>& outModels, std::string& outMessage)
+   {
+      outModels.clear();
+      const std::string base = NormalizeOpenAIBaseUrl(baseUrl);
+      if (base.empty())
+      {
+         outMessage = "Base URL is empty.";
+         return false;
+      }
+      std::string body, httpErr;
+      if (!Platform::HttpGet(base + "/models", "Infinite", body, httpErr, 20, apiKey))
+      {
+         outMessage = httpErr.empty() ? "Model list request failed." : httpErr;
+         return false;
+      }
+      outModels = ParseOpenAIModels(body);
+      if (outModels.empty())
+      {
+         outMessage = "The endpoint lists no models.";
+         return false;
+      }
+      outMessage = "Found " + std::to_string(outModels.size()) + " model(s).";
+      return true;
+   }
+
+   HttpPostStreamHook gHttpHook;
+
+   void SetHttpPostStreamHook(HttpPostStreamHook hook)
+   {
+      gHttpHook = std::move(hook);
+   }
+
    std::shared_ptr<OpenAIAgentRun> OpenAIAgentRun::Start(const Options& options)
    {
       auto ptr = std::shared_ptr<OpenAIAgentRun>(new OpenAIAgentRun(options));
@@ -448,16 +499,21 @@ namespace chat
       }
 
       nlohmann::json messages = nlohmann::json::array();
-      if (!mOptions.systemPrompt.empty())
-         messages.push_back({ { "role", "system" }, { "content", mOptions.systemPrompt } });
+      // The pack's prompt wins; the plain chat briefing is the fallback when none is set.
+      const std::string systemPrompt = !mOptions.harness.systemPrompt.empty() ? mOptions.harness.systemPrompt : mOptions.systemPrompt;
+      if (!systemPrompt.empty())
+         messages.push_back({ { "role", "system" }, { "content", systemPrompt } });
       for (const auto& [role, content] : mOptions.history)
          messages.push_back({ { "role", role }, { "content", content } });
       messages.push_back({ { "role", "user" }, { "content", mOptions.userPrompt } });
 
-      bool useTools = true;
+      const HarnessConfig& cfg = mOptions.harness;
+      const bool protocolMode = cfg.mode == HarnessMode::Protocol;
+      bool useTools = !protocolMode;
       TurnUsage totalUsage;
       std::string finalError;
       bool hadError = false;
+      int parseErrors = 0;
       const int maxSteps = std::max(1, mOptions.maxSteps);
 
       for (int step = 0; step < maxSteps && !mStop.load(); ++step)
@@ -468,20 +524,34 @@ namespace chat
             { "stream", true }
          };
          if (useTools)
-            req["tools"] = OpenAIAgentTools();
+         {
+            // The pack's tool subset (a weak model picks the right tool more often with fewer).
+            nlohmann::json tools = OpenAIAgentTools();
+            if (!cfg.tools.empty())
+            {
+               nlohmann::json subset = nlohmann::json::array();
+               for (const nlohmann::json& t : tools)
+                  if (t.is_object() && t.contains("function") && t["function"].is_object() &&
+                      t["function"].contains("name") &&
+                      std::find(cfg.tools.begin(), cfg.tools.end(), t["function"]["name"].get<std::string>()) != cfg.tools.end())
+                    subset.push_back(t);
+               tools = std::move(subset);
+            }
+            req["tools"] = std::move(tools);
+         }
 
          OpenAIStreamParser parser;
          int status = 0;
          std::string errBody, netErr;
-         const bool ok = Platform::HttpPostStream(
-            base + "/chat/completions", req.dump(), mOptions.apiKey,
-            [&](const std::string& chunk) {
-               if (mStop.load())
-                  return false;
-               parser.Feed(chunk);
-               return true;
-            },
-            status, errBody, netErr, 120);
+         auto feed = [&](const std::string& chunk) {
+            if (mStop.load())
+               return false;
+            parser.Feed(chunk);
+            return true;
+         };
+         const bool ok = gHttpHook
+            ? gHttpHook(base + "/chat/completions", req.dump(), mOptions.apiKey, feed, status, errBody, netErr, 120)
+            : Platform::HttpPostStream(base + "/chat/completions", req.dump(), mOptions.apiKey, feed, status, errBody, netErr, 120);
          parser.Finish();
 
          if (!ok)
@@ -505,6 +575,76 @@ namespace chat
          totalUsage.input += parser.Usage().input;
          totalUsage.cached += parser.Usage().cached;
          totalUsage.output += parser.Usage().output;
+
+         if (protocolMode)
+         {
+            // Protocol mode: the model answers in plain text with tag lines. The parser is
+            // deterministic; every action goes through the same propose gate as native tools.
+            // Results come back as user messages so any OpenAI-compatible endpoint accepts them.
+            const ProtocolReply pr = ParseProtocol(parser.Text());
+            if (!pr.text.empty())
+            {
+               AgentEvent tev;
+               tev.kind = AgentEvent::Kind::Text;
+               tev.text = pr.text;
+               PushEvent(std::move(tev));
+            }
+            for (const std::string& tag : pr.unknownTags)
+            {
+               AgentEvent tr;
+               tr.kind = AgentEvent::Kind::ToolResult;
+               tr.text = "ignored unknown tag: " + tag;
+               PushEvent(std::move(tr));
+            }
+            if (!pr.hasAction)
+               break; // a text-only reply: the turn is done
+
+            const ProtocolBlock& a = pr.action;
+            std::string method;
+            if (a.kind == ProtocolKind::Propose)
+               method = "propose";
+            else if (a.kind == ProtocolKind::Check)
+               method = "check";
+            else
+               method = a.json.value("name", std::string());
+            AgentEvent te;
+            te.kind = AgentEvent::Kind::Tool;
+            te.text = method.empty() ? a.tag : method;
+            PushEvent(std::move(te));
+
+            if (!a.validJson || method.empty())
+            {
+               const std::string err = method.empty() ? "the name of the tool to call is missing"
+                                                       : (a.err.empty() ? "the action block is not a JSON object" : a.err);
+               ++parseErrors;
+               AgentEvent tr;
+               tr.kind = AgentEvent::Kind::ToolResult;
+               tr.error = true;
+               tr.text = a.tag + ": " + err;
+               PushEvent(std::move(tr));
+               messages.push_back({
+                  { "role", "user" },
+                  { "content", "Your " + a.tag + " block could not be used: " + err + ". Reply with one corrected " + a.tag + " block." }
+               });
+               if (parseErrors > cfg.maxParseErrors)
+               {
+                  hadError = true;
+                  finalError = "The model kept sending unusable command blocks.";
+                  break;
+               }
+               continue;
+            }
+            parseErrors = 0;
+
+            const nlohmann::json result = ExecuteToolOnMain(method, a.raw);
+            messages.push_back({
+               { "role", "user" },
+               { "content", "Result of your " + method + " call: " + result.dump() }
+            });
+            if (pr.multipleActions)
+               messages.push_back({ { "role", "user" }, { "content", "Only one action block per turn: the extra block was ignored." } });
+            continue;
+         }
 
          if (!parser.Text().empty())
          {

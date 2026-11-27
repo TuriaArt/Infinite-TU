@@ -32,6 +32,7 @@
 #include "core/chat/AgentAuth.h"
 #include "core/chat/AgentRun.h"
 #include "core/chat/OpenAIAgent.h"
+#include "core/chat/HarnessConfig.h"
 #include "core/chat/Onboarding.h"
 #include "core/chat/ChatDiff.h"
 #include "core/chat/ChatFiles.h"
@@ -50,6 +51,7 @@
 #include "app/ui/design/UiScope.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cctype>
 #include <chrono>
 #include <cmath>
@@ -59,9 +61,11 @@
 #include <fstream>
 #include <iterator>
 #include <map>
+#include <mutex>
 #include <set>
 #include <random>
 #include <sstream>
+#include <thread>
 #include <unordered_map>
 
 namespace app
@@ -1281,7 +1285,7 @@ namespace app
             o.baseUrl = prefs.customBaseUrl;
             o.model = prefs.customModel;
             Platform::SecretLoad("custom_agent_api_key", o.apiKey);
-            o.systemPrompt = chat::Briefing();
+            o.systemPrompt = chat::Briefing(); // the pack's harness prompt wins in the run loop
             for (const Entry& e : sThread.entries)
             {
                if (e.kind == Entry::Kind::User && !e.text.empty())
@@ -1292,7 +1296,8 @@ namespace app
             if (!o.history.empty() && o.history.back().first == "user" && o.history.back().second == prompt)
                o.history.pop_back();
             o.userPrompt = prompt;
-            o.maxSteps = 12;
+            o.harness = chat::LoadHarnessConfig("ollama-harness");
+            o.maxSteps = o.harness.maxSteps;
             r.customRun = chat::OpenAIAgentRun::Start(o);
             r.steps = (int)sThread.entries.size();
             Push(Make(Entry::Kind::Steps, "", agent));
@@ -4696,6 +4701,39 @@ namespace app
          static std::map<std::string, std::shared_ptr<chat::AgentRun>> sFetch;
          chat::AgentKind kind;
          std::vector<chat::Model>& list = sModels[agent];
+         // The custom agent (Ollama and friends) has no fixed list: its models are whatever the endpoint
+         // answers. The list is fetched once a minute at most, on a worker thread, like the others'.
+         if (agent == "custom")
+         {
+            static std::mutex sCustomMutex;
+            static std::vector<std::string> sCustomIds;
+            static std::atomic<bool> sCustomFetching{ false };
+            static double sCustomAt = -1e9;
+            const double now = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+            if (list.empty() && !sCustomFetching.load() && now - sCustomAt >= 60.0)
+            {
+               sCustomFetching.store(true);
+               sCustomAt = now;
+               const std::string url = CliSetup::Prefs().customBaseUrl;
+               std::string key;
+               Platform::SecretLoad("custom_agent_api_key", key);
+               std::thread([url, key]() {
+                  std::vector<std::string> ids;
+                  std::string msg;
+                  chat::ListOpenAIModels(url, key, ids, msg);
+                  std::lock_guard<std::mutex> l(sCustomMutex);
+                  sCustomIds = std::move(ids);
+                  sCustomFetching.store(false);
+               }).detach();
+            }
+            if (list.empty())
+            {
+               std::lock_guard<std::mutex> l(sCustomMutex);
+               for (const std::string& id : sCustomIds)
+                  list.push_back({ id, id, id });
+            }
+            return list;
+         }
          if (!KindOf(agent, kind))
             return list;
          if (list.empty())
@@ -4811,7 +4849,8 @@ namespace app
             return {};
          const std::vector<chat::Model>& list = ModelsOf(agent);
          CliSetup::Config& prefs = CliSetup::Prefs();
-         const std::string picked = prefs.models.count(agent) ? prefs.models[agent] : std::string();
+         // The custom agent keeps its model in its own preset field, not in the per-agent map.
+         const std::string picked = (agent == "custom") ? prefs.customModel : (prefs.models.count(agent) ? prefs.models[agent] : std::string());
          for (const chat::Model& m : list)
             if (!picked.empty() && m.id == picked && !m.label.empty())
                return m.label;
@@ -4895,6 +4934,39 @@ namespace app
                if (!rows && MenuRow("##only", menuW, face.c_str(), "", a.id == cur, true, std::string()))
                {
                   prefs.agent = a.id;
+                  SaveCliConfig();
+                  ImGui::CloseCurrentPopup();
+               }
+               ImGui::PopID();
+            }
+            // The custom agent is not one of the installable agents: it is ready when its endpoint is set,
+            // and its rows are the endpoint's own model list.
+            if (CustomReady())
+            {
+               anyReady = true;
+               ImGui::PushID("custom");
+               MenuLabel(AgentName("custom"), menuW);
+               const std::vector<chat::Model>& list = ModelsOf("custom");
+               const std::string face = ModelFace("custom");
+               bool rows = false;
+               for (const chat::Model& m : list)
+               {
+                  if (m.id.empty() || m.label.empty())
+                     continue;
+                  rows = true;
+                  ImGui::PushID(m.id.c_str());
+                  if (MenuRow("##m", menuW, m.label.c_str(), "", "custom" == cur && m.label == face, true, std::string()))
+                  {
+                     prefs.agent = "custom";
+                     prefs.customModel = m.id;
+                     SaveCliConfig();
+                     ImGui::CloseCurrentPopup();
+                  }
+                  ImGui::PopID();
+               }
+               if (!rows && MenuRow("##only", menuW, face.c_str(), "", "custom" == cur, true, std::string()))
+               {
+                  prefs.agent = "custom";
                   SaveCliConfig();
                   ImGui::CloseCurrentPopup();
                }

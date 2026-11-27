@@ -1160,7 +1160,7 @@ namespace Platform
 
    bool HttpGet(const std::string& url, const std::string& userAgent,
                 std::string& outBody, std::string& outError,
-                int timeoutSeconds)
+                int timeoutSeconds, const std::string& bearerToken)
    {
       outBody.clear();
       outError.clear();
@@ -1185,6 +1185,10 @@ namespace Platform
          return false;
       }
 
+      struct curl_slist* headers = nullptr;
+      if (!bearerToken.empty() && curl.slist_append)
+         headers = curl.slist_append(headers, ("Authorization: Bearer " + bearerToken).c_str());
+
       curl.easy_setopt(ch, CURLOPT_URL, url.c_str());
       curl.easy_setopt(ch, CURLOPT_USERAGENT, userAgent.c_str());
       curl.easy_setopt(ch, CURLOPT_WRITEFUNCTION, CurlWriteCallback);
@@ -1192,12 +1196,16 @@ namespace Platform
       curl.easy_setopt(ch, CURLOPT_TIMEOUT, (long)timeoutSeconds);
       curl.easy_setopt(ch, CURLOPT_FOLLOWLOCATION, 1L);
       curl.easy_setopt(ch, CURLOPT_NOSIGNAL, 1L);
+      if (headers)
+         curl.easy_setopt(ch, CURLOPT_HTTPHEADER, headers);
 
       CURLcode res = curl.easy_perform(ch);
 
       long statusCode = 0;
       curl.easy_getinfo(ch, CURLINFO_RESPONSE_CODE, &statusCode);
       curl.easy_cleanup(ch);
+      if (headers && curl.slist_free_all)
+         curl.slist_free_all(headers);
 
       if (res != CURLE_OK)
       {

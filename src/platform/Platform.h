@@ -1738,10 +1738,11 @@ namespace Platform
    // thread. Returns false on any transport, TLS, or non-2xx failure and fills
    // outError; outBody is only valid when it returns true. Bounded by
    // timeoutSeconds and a hard response-size cap so a hung or hostile endpoint
-   // can't stall or balloon the caller.
+   // can't stall or balloon the caller. `bearerToken`, when non-empty, is sent
+   // as an Authorization header (API-key endpoints).
    bool HttpGet(const std::string& url, const std::string& userAgent,
                 std::string& outBody, std::string& outError,
-                int timeoutSeconds = 10);
+                int timeoutSeconds = 10, const std::string& bearerToken = "");
 
    // Streams an HTTPS GET to `destPath` (no size cap, nothing held in memory).
    // Call from a worker thread. `progress(done, total)` runs on the calling

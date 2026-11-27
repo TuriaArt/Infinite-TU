@@ -12,6 +12,9 @@
 #include "core/chat/ReplyLinks.h"
 #include "core/chat/ChatGuide.h"
 #include "core/chat/NodeFinder.h"
+#include "core/chat/OpenAIAgent.h"
+#include "core/chat/HarnessConfig.h"
+#include "core/chat/LocalProtocol.h"
 #include "core/AgentDocs.h"
 
 #include <algorithm>
@@ -516,6 +519,15 @@ namespace app
             check(chat::ConfiguredModel(chat::AgentKind::Codex, "[tui]\nmodel = \"x\"\n").empty(), "models: a model inside a table is not the default");
             check(chat::ConfiguredModel(chat::AgentKind::Antigravity, R"j({"model": "Gemini 3.8 Flash (Medium)"})j") == "Gemini 3.8 Flash (Medium)", "models: gemini's default comes from its settings.json");
             check(chat::ConfiguredModel(chat::AgentKind::Claude, R"({"theme": "dark"})").empty(), "models: no model set, no default named");
+            // The custom agent's list is an OpenAI-compatible /models answer: ids only, in the endpoint's order.
+            {
+               const std::vector<std::string> ids = chat::ParseOpenAIModels(
+                  R"({"object":"list","data":[{"id":"qwen2.5-coder:7b","object":"model"},{"id":"llama3.1:8b","object":"model"}]})");
+               check(ids.size() == 2 && ids[0] == "qwen2.5-coder:7b" && ids[1] == "llama3.1:8b", "models: openai list, ids in order");
+               check(chat::ParseOpenAIModels("not json").empty(), "models: a broken openai list gives none");
+               check(chat::ParseOpenAIModels(R"({"data":[{"name":"no-id"}]})").empty(), "models: entries without an id are dropped");
+               check(chat::ParseOpenAIModels(R"({"data":[]})").empty(), "models: an empty openai list gives none");
+            }
             // The picker itself reads the cache from Codex's folder. The test points CODEX_HOME at a temp folder:
             // the suite may run under the real HOME (the pre-push hook), and the user's own cache is never written.
             {
@@ -542,6 +554,252 @@ namespace app
                std::error_code ec;
                std::filesystem::remove_all(dir, ec);
             }
+         }
+
+         // The local-model protocol parser (docs/plans/local-harness/README.md §3).
+         {
+            using chat::ProtocolKind;
+            using chat::ProtocolReply;
+
+            // The owner's example: an explanation and a propose.
+            {
+               const ProtocolReply pr = chat::ParseProtocol(
+                  "TEXT: I'll add a sine.\n"
+                  "PROPOSE: {\"label\": \"sine\", \"calls\": [{\"method\": \"create_node\", \"params\": {\"type\": \"Analog\"}}]}\n");
+               check(pr.text == "I'll add a sine." && pr.hasAction && !pr.multipleActions,
+                     "protocol: text, one action, not multi");
+               check(pr.action.kind == ProtocolKind::Propose && pr.action.validJson && pr.action.json["label"] == "sine" &&
+                     pr.action.json["calls"][0]["method"] == "create_node",
+                     "protocol: the propose block parses as JSON");
+            }
+            // Propose and check in one reply: only the propose runs, the check is noted.
+            {
+               const ProtocolReply pr = chat::ParseProtocol("PROPOSE: {\"label\": \"a\", \"calls\": []}\nCHECK: {\"reset\": false}\n");
+               check(pr.hasAction && pr.multipleActions && pr.action.kind == ProtocolKind::Propose,
+                     "protocol: propose and check in one reply: only the propose runs");
+            }
+            // A text-only reply is the turn's answer.
+            {
+               const ProtocolReply pr = chat::ParseProtocol("Just answering, no action.\nMore text.");
+               check(!pr.hasAction && pr.text == "Just answering, no action.\nMore text.", "protocol: a reply with no tags is text");
+            }
+            // Pretty-printed JSON over several lines.
+            {
+               const ProtocolReply pr = chat::ParseProtocol(
+                  "PROPOSE: {\n   \"label\": \"x\",\n   \"calls\": []\n}\n");
+               check(pr.hasAction && pr.action.validJson && pr.action.json["label"] == "x" && pr.action.json["calls"].empty(),
+                     "protocol: pretty-printed JSON across lines");
+            }
+            // Two action blocks: the first wins, the rest are noted.
+            {
+               const ProtocolReply pr = chat::ParseProtocol(
+                  "PROPOSE: {\"label\": \"a\", \"calls\": []}\nPROPOSE: {\"label\": \"b\", \"calls\": []}\n");
+               check(pr.hasAction && pr.multipleActions && pr.action.json["label"] == "a",
+                     "protocol: two proposes: the first runs, the rest are ignored");
+            }
+            // An unknown tag stays in the text and is noted.
+            {
+               const ProtocolReply pr = chat::ParseProtocol("TEXT: hi\nTRY: {\"x\": 1}\nmore text\n");
+               check(pr.unknownTags.size() == 1 && pr.unknownTags[0] == "TRY" &&
+                     pr.text.find("TRY: {\"x\": 1}") != std::string::npos && pr.text.find("more text") != std::string::npos,
+                     "protocol: an unknown tag keeps its content in the text");
+            }
+            // Lowercase tags are the same protocol.
+            {
+               const ProtocolReply pr = chat::ParseProtocol("check: {\"reset\": true}\n");
+               check(pr.hasAction && pr.action.kind == ProtocolKind::Check && pr.action.validJson && pr.action.json["reset"] == true,
+                     "protocol: lowercase tags work");
+            }
+            // A broken action block is reported, not thrown.
+            {
+               nlohmann::json obj;
+               std::string err;
+               check(!chat::ParseActionJson("{not json", obj, err) && !err.empty(), "protocol: broken JSON is refused with an error");
+               check(!chat::ParseActionJson("[1,2]", obj, err) && err.find("object") != std::string::npos, "protocol: a JSON array is refused");
+               const ProtocolReply pr = chat::ParseProtocol("PROPOSE: {oops\n");
+               check(pr.hasAction && !pr.action.validJson && !pr.action.err.empty(), "protocol: a broken block is reported");
+            }
+            // A reply with no action block at all: nothing to execute.
+            {
+               const ProtocolReply pr = chat::ParseProtocol("TEXT: nothing to do\n");
+               check(!pr.hasAction, "protocol: a text-only reply has no action");
+            }
+         }
+
+         // The harness pack config (docs/plans/local-harness/README.md §4).
+         {
+            const std::filesystem::path root = std::filesystem::temp_directory_path() / "infinite-harness-ext";
+            std::error_code ec;
+            std::filesystem::remove_all(root, ec);
+            auto setExtDir = [](const std::string& v)
+            {
+#if defined(_WIN32)
+               _putenv_s("INFINITE_EXTENSIONS_DIR", v.c_str()); // "" removes it
+#else
+               if (v.empty())
+                  unsetenv("INFINITE_EXTENSIONS_DIR");
+               else
+                  setenv("INFINITE_EXTENSIONS_DIR", v.c_str(), 1);
+#endif
+            };
+            // No pack: built-in defaults, protocol mode.
+            {
+               setExtDir(root.string());
+               const chat::HarnessConfig c = chat::LoadHarnessConfig("ollama-harness");
+               check(c.source == "builtin" && c.mode == chat::HarnessMode::Protocol && !c.systemPrompt.empty() &&
+                     c.tools == chat::DefaultHarnessTools() && c.maxSteps == 12 && c.maxParseErrors == 2 && !c.allowMultiAction,
+                     "harness: no pack means built-in defaults");
+               check(chat::LoadHarnessConfig("bad id!").source == "builtin", "harness: an invalid pack id means built-in defaults");
+            }
+            // A pack with harness.json: mode, prompt, tool subset, clamped limits.
+            {
+               const std::filesystem::path pack = root / "ollama-harness";
+               std::filesystem::create_directories(pack);
+               std::ofstream(pack / "pack.json") << "{\"id\":\"ollama-harness\",\"version\":\"1.0.0\"}";
+               std::ofstream(pack / "harness.json") << R"({
+ "schema": 1, "mode": "tools", "systemPrompt": "be brief",
+ "tools": { "propose": {"enabled": true}, "get_graph": {"enabled": true}, "nonsense": {"enabled": true} },
+ "limits": { "maxSteps": 999, "maxParseErrors": 9, "allowMultiAction": true } })";
+               const chat::HarnessConfig c = chat::LoadHarnessConfig("ollama-harness");
+               const bool hasPropose = std::find(c.tools.begin(), c.tools.end(), "propose") != c.tools.end();
+               const bool hasGraph = std::find(c.tools.begin(), c.tools.end(), "get_graph") != c.tools.end();
+               check(c.source == "pack:ollama-harness" && c.mode == chat::HarnessMode::Tools && c.systemPrompt == "be brief" &&
+                     c.tools.size() == 2 && hasPropose && hasGraph,
+                     "harness: a pack's mode, prompt and tool subset are read");
+               check(c.maxSteps == 32 && c.maxParseErrors == 5 && c.allowMultiAction, "harness: limits are clamped");
+            }
+            // A pack with an unsupported schema: built-in defaults with a note.
+            {
+               std::ofstream(root / "ollama-harness" / "harness.json") << R"({"schema": 2})";
+               const chat::HarnessConfig c = chat::LoadHarnessConfig("ollama-harness");
+               check(c.source == "builtin" && !c.warning.empty(), "harness: an unsupported schema falls back with a warning");
+            }
+            // A pack whose tools list is empty: the default subset comes back.
+            {
+               std::ofstream(root / "ollama-harness" / "harness.json") << R"({"schema": 1, "tools": {}})";
+               const chat::HarnessConfig c = chat::LoadHarnessConfig("ollama-harness");
+               check(c.source == "pack:ollama-harness" && c.tools == chat::DefaultHarnessTools() && !c.warning.empty(),
+                     "harness: an empty tool list falls back to the default subset");
+            }
+            setExtDir("");
+            std::filesystem::remove_all(root, ec);
+         }
+
+         // A TOOL block is an action like the others.
+         {
+            const ProtocolReply pr = chat::ParseProtocol("TEXT: looking\nTOOL: {\"name\": \"get_graph\", \"params\": {}}\n");
+            check(pr.hasAction && pr.action.kind == ProtocolKind::Tool && pr.action.validJson &&
+                  pr.action.json["name"] == "get_graph", "protocol: a TOOL block parses with its name");
+         }
+
+         // Escape-sequence normalization (the model's double-escaping and stray backslashes).
+         {
+            nlohmann::json j;
+            std::string err;
+            // Double-escaped quotes in a label: valid JSON, the value carries the artifact.
+            std::string raw = "{\"label\": \"a ";
+            raw += "\\\\\\";
+            raw += "\"b\\\\\\\"\", \"calls\": []}";
+            check(chat::ParseActionJson(raw, j, err) && j["label"] == "a \"b\"", "escape: a double-escaped label is cleaned");
+            // Structural quotes escaped at the token level: broken JSON, repaired by the normalizer.
+            check(chat::ParseActionJson("{\\\"label\\\": \\\"x\\\", \\\"calls\\\": []}", j, err) && j["label"] == "x",
+                  "escape: structural over-escaping is repaired");
+            // A stray backslash in a method name: invalid escape, the normalizer drops it.
+            check(chat::ParseActionJson("{\"label\": \"x\", \"calls\": [{\"method\": \"set\\_param\", \"params\": {}}]}", j, err) &&
+                  j["calls"][0]["method"] == "set_param", "escape: a stray backslash in a method name is dropped");
+            // An extra backslash in a parameter key: valid JSON, the key is cleaned.
+            check(chat::ParseActionJson("{\"label\": \"x\", \"calls\": [{\"method\": \"set_param\", \"params\": {\"freq\\\\name\": 1}}]}", j, err) &&
+                  ([&]() {
+                     std::string key;
+                     for (const auto& kv : j["calls"][0]["params"].items())
+                        key = kv.key();
+                     return key.find('\\') == std::string::npos;
+                  })(),
+                  "escape: a stray backslash in a parameter key is dropped");
+         }
+
+         // E2E scenario: a scripted model walks the protocol - it inspects the patch through the
+         // real read-only tools (get_graph, list_node_types) and then proposes a Flower node.
+         {
+            std::vector<std::string> executed;   // tool methods the executor saw
+            std::vector<nlohmann::json> params;  // their params
+            std::vector<std::string> texts;      // the model's TEXT lines
+            std::vector<std::string> toolEvents;
+            int call = 0;
+            chat::SetHttpPostStreamHook([&](const std::string&, const std::string&, const std::string&,
+                                            const Platform::HttpStreamChunk& onChunk, int& status,
+                                            std::string&, std::string&, int)
+            {
+               std::string reply;
+               if (call == 0)
+                  reply = "TEXT: I'll look at the patch first.\nTOOL: {\"name\": \"get_graph\", \"params\": {}}\n";
+               else if (call == 1)
+                  reply = "TEXT: Now the node types.\nTOOL: {\"name\": \"list_node_types\", \"params\": {}}\n";
+               else if (call == 2)
+                  reply = "TEXT: Adding a flower.\nPROPOSE: {\"label\": \"flower\", \"calls\": [{\"method\": \"create_node\", \"params\": {\"typeName\": \"Flower\"}}]}\n";
+               else
+                  reply = "TEXT: Done.\n";
+               ++call;
+               status = 200;
+               std::string esc;
+               for (char c : reply)
+               {
+                  if (c == '\\') esc += "\\\\";
+                  else if (c == '"') esc += "\\\"";
+                  else if (c == '\n') esc += "\\n";
+                  else esc += c;
+               }
+               onChunk("data: {\"choices\":[{\"delta\":{\"content\":\"" + esc + "\"}}]}\n\n"
+                       "data: [DONE]\n\n");
+               return true;
+            });
+
+            chat::OpenAIAgentRun::Options o;
+            o.baseUrl = "http://localhost:11434/v1";
+            o.model = "qwen2.5-coder:7b";
+            o.userPrompt = "add a flower";
+            o.harness = chat::LoadHarnessConfig("ollama-harness");
+            o.maxSteps = o.harness.maxSteps;
+            std::shared_ptr<chat::OpenAIAgentRun> run = chat::OpenAIAgentRun::Start(o);
+            const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+            while (!run->Done() && std::chrono::steady_clock::now() < until)
+            {
+               std::vector<chat::AgentEvent> ev;
+               run->Poll(ev, [&](const std::string& method, const nlohmann::json& p, nlohmann::json& res, std::string&)
+               {
+                  executed.push_back(method);
+                  params.push_back(p);
+                  res = { { "ok", true } };
+                  return true;
+               });
+               for (const chat::AgentEvent& e : ev)
+               {
+                  if (e.kind == chat::AgentEvent::Kind::Text)
+                     texts.push_back(e.text);
+                  else if (e.kind == chat::AgentEvent::Kind::Tool)
+                     toolEvents.push_back(e.text);
+               }
+               std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+            // The run thread may push its last events just as Done() flips: drain once more.
+            std::vector<chat::AgentEvent> tail;
+            run->Poll(tail, [](const std::string&, const nlohmann::json&, nlohmann::json&, std::string&) { return true; });
+            for (const chat::AgentEvent& e : tail)
+            {
+               if (e.kind == chat::AgentEvent::Kind::Text)
+                  texts.push_back(e.text);
+               else if (e.kind == chat::AgentEvent::Kind::Tool)
+                  toolEvents.push_back(e.text);
+            }
+            chat::SetHttpPostStreamHook(nullptr);
+
+            check(run->Done() && call == 4, "e2e: the scripted model answered all four turns");
+            check(executed.size() == 3 && executed[0] == "get_graph" && executed[1] == "list_node_types" && executed[2] == "propose",
+                  "e2e: the model walked get_graph, list_node_types, then propose");
+            check(params.size() == 3 && params[2].contains("calls") && params[2]["calls"][0]["method"] == "create_node" &&
+                  params[2]["calls"][0]["params"]["typeName"] == "Flower",
+                  "e2e: the propose creates a Flower node");
+            check(toolEvents.size() == 3 && texts.size() == 4, "e2e: each tool and each text line is surfaced");
          }
 
          // A saved chat comes back with its entries and the agents' sessions.

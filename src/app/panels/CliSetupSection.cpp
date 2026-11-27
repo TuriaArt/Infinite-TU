@@ -27,6 +27,7 @@
 #include <atomic>
 #include <cstring>
 #include <ctime>
+#include <vector>
 #include <fstream>
 #include <mutex>
 #include <sstream>
@@ -343,6 +344,8 @@ namespace app
          static std::atomic<bool> sTesting{ false };
          [[maybe_unused]] static bool sTestOk = false;
          static std::string sTestStatus;
+         static std::vector<std::string> sModelList;      // ids the endpoint listed, most recent check
+         static std::atomic<bool> sModelListLoading{ false };
 
          if (sLoadedUrl != prefs.customBaseUrl)
          {
@@ -405,6 +408,56 @@ namespace app
             sLoadedModel = prefs.customModel;
             SaveConfig(cpaths.config, prefs);
          }
+         // Browse the endpoint's own model list (Ollama and the hosted providers all answer /models).
+         // A pick fills the field above, like choosing from any other agent's menu.
+         FormParts::Inline(0.0f, tok::space_1);
+         if (button(L("Browse models"), false))
+         {
+            const std::string url = sUrlBuf;
+            std::string key;
+            if (sKeyBuf[0] != '\0')
+               Platform::SecretLoad("custom_agent_api_key", key);
+            if (!sModelListLoading.exchange(true))
+            {
+               std::thread([url, key]() {
+                  std::vector<std::string> models;
+                  std::string msg;
+                  const bool ok = chat::ListOpenAIModels(url, key, models, msg);
+                  {
+                     std::lock_guard<std::mutex> lock(sTestMutex);
+                     sModelList = std::move(models);
+                     sTestStatus = ok ? msg : (msg.empty() ? std::string(T("No models listed")) : msg);
+                  }
+                  sModelListLoading.store(false);
+               }).detach();
+            }
+            ImGui::OpenPopup("##custommodels");
+         }
+         if (MenuParts::BeginPopup("##custommodels"))
+         {
+            if (sModelListLoading.load())
+            {
+               ImGui::TextUnformatted(T("Loading…"));
+            }
+            else
+            {
+               for (const std::string& m : sModelList)
+               {
+                  const bool sel = (m == std::string(sModelBuf));
+                  if (MenuParts::Choice(m.c_str(), sel))
+                  {
+                     std::snprintf(sModelBuf, sizeof sModelBuf, "%s", m.c_str());
+                     prefs.customModel = sModelBuf;
+                     sLoadedModel.clear();
+                     SaveConfig(cpaths.config, prefs);
+                     ImGui::CloseCurrentPopup();
+                  }
+               }
+               if (sModelList.empty())
+                  ImGui::TextUnformatted(T("No models listed"));
+            }
+            MenuParts::EndPopup();
+         }
 
          FormParts::Label(L("API key"));
          ImGui::SetNextItemWidth(-1.0f);
@@ -450,10 +503,20 @@ namespace app
             std::thread([url, model, key]() {
                std::string msg;
                const bool ok = chat::TestOpenAIConnection(url, model, key, msg);
+               // A working endpoint also answers /models: list them for the Browse button, and
+               // an empty model field can take the first one the endpoint offers.
+               std::vector<std::string> models;
+               if (ok)
+               {
+                  std::string listMsg;
+                  if (chat::ListOpenAIModels(url, key, models, listMsg))
+                     msg += " " + listMsg;
+               }
                {
                   std::lock_guard<std::mutex> lock(sTestMutex);
                   sTestOk = ok;
                   sTestStatus = msg;
+                  sModelList = std::move(models);
                }
                sTesting.store(false);
             }).detach();

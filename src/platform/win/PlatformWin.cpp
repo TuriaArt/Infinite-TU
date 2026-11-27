@@ -1473,7 +1473,7 @@ namespace Platform
 
    bool HttpGet(const std::string& url, const std::string& userAgent,
                 std::string& outBody, std::string& outError,
-                int timeoutSeconds)
+                int timeoutSeconds, const std::string& bearerToken)
    {
       outBody.clear();
       outError.clear();
@@ -1529,7 +1529,14 @@ namespace Platform
          return false;
       }
 
-      if (!WinHttpSendRequest(request, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
+      // An API-key endpoint (DeepSeek, OpenRouter) needs the Authorization header; a local
+      // Ollama needs none, so it is only sent when a token was configured.
+      std::wstring extraHeaders;
+      if (!bearerToken.empty())
+         extraHeaders = L"Authorization: Bearer " + WinCommon::Utf8ToWide(bearerToken) + L"\r\n";
+
+      if (!WinHttpSendRequest(request, extraHeaders.empty() ? WINHTTP_NO_ADDITIONAL_HEADERS : extraHeaders.c_str(),
+             extraHeaders.empty() ? 0 : (DWORD)((extraHeaders.size() + 1) * sizeof(wchar_t)),
              WINHTTP_NO_REQUEST_DATA, 0, 0, 0) ||
           !WinHttpReceiveResponse(request, nullptr))
       {

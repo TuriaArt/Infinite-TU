@@ -2,5 +2,9 @@
   "tracking": {
     "name": "Tracking",
     "purpose": "Hand, face and pose tracking from camera or image input"
+  },
+  "ollama-harness": {
+    "name": "Ollama Harness",
+    "purpose": "Local models (Ollama, custom) driven through the text protocol harness"
   }
 }
