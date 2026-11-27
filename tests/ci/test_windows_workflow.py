@@ -24,11 +24,12 @@ class WindowsWorkflowTest(unittest.TestCase):
 
     def test_platform_dispatch(self):
         options = self.workflow['on']['workflow_dispatch']['inputs']['only']['options']
-        self.assertEqual(options, ['all', 'windows', 'windows-x64', 'linux', 'macos'])
+        self.assertEqual(options, ['all', 'windows', 'windows-x64', 'windows-startup-check', 'linux', 'macos'])
         script = self.workflow['jobs']['detect']['steps'][1]['run']
         for value, windows, linux in [
             ('', 'true', 'true'), ('all', 'true', 'true'),
             ('windows', 'true', 'false'), ('windows-x64', 'true', 'false'),
+            ('windows-startup-check', 'false', 'false'),
             ('linux', 'false', 'true'), ('macos', 'false', 'false'),
         ]:
             with self.subTest(only=value), tempfile.NamedTemporaryFile() as output:
