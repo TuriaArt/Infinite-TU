@@ -3962,3 +3962,101 @@ Border	Rand
 Accent	Akzent
 Reset theme colors	Theme-Farben zurücksetzen
 i	=en
+
+# Previously missing UI strings (machine-drafted; native review pending).
+1-frame delay buffer (for Node Graph feedback loops)	Puffer mit 1 Bild Verzögerung (für Rückkopplungsschleifen im Knotengraphen)
+Accumulates motion or Zoom/Rotate/Drift echoes	Sammelt Bewegung oder Zoom-, Dreh- und Drift-Echos
+Add layer mask (Shift-click: vector mask)	Ebenenmaske hinzufügen (Umschalt-Klick: Vektormaske)
+Apply Formula	Formel anwenden
+Bayer 4x4	Bayer 4x4
+Bayer 8x8	Bayer 8x8
+Blue / IGN	Blau / IGN
+Bulge	Ausbeulen
+Bulge outward	Nach außen ausbeulen
+Clear Trails	Spuren löschen
+Click neutral grey	Auf neutrales Grau klicken
+Clumping	Verklumpung
+Colour screen	Farbschirm
+Convert Shape to Path	Form in Pfad umwandeln
+Convert shape into editable Bezier points (A)	Form in bearbeitbare Bézier-Punkte umwandeln (A)
+Convert to editable Bezier anchors	In bearbeitbare Bézier-Ankerpunkte umwandeln
+Cooling (80)	Kühlung (80)
+Cooling (82)	Kühlung (82)
+Deep Emerald	Tiefes Smaragdgrün
+Deform	Verformen
+Deform Shape	Form verformen
+Detail	Detail
+Direct-select and bend points	Punkte direkt auswählen und biegen
+Direction	Richtung
+Disable Vector Mask	Vektormaske deaktivieren
+Dithered	Gerastert
+Dot	Punkt
+Double curve points	Kurvenpunkte verdoppeln
+Draw and edit the vector mask	Vektormaske zeichnen und bearbeiten
+Duplicate layer	Ebene duplizieren
+Edge	Kante
+Edit Vector Mask	Vektormaske bearbeiten
+Edit Vector Points (A)	Vektorpunkte bearbeiten (A)
+Edit mask	Maske bearbeiten
+Edit points (A)	Punkte bearbeiten (A)
+Enable Vector Mask	Vektormaske aktivieren
+Feather	Weiche Kante
+Film Grain	Filmkorn
+Fine Blue	Feines Blau
+Formula	Formel
+Gaussian	Gauß
+Group selected layers	Ausgewählte Ebenen gruppieren
+Grows Gray-Scott patterns shaped by layer luma	Erzeugt Gray-Scott-Muster anhand der Ebenenluminanz
+Invert Vector Mask	Vektormaske invertieren
+Invert vector mask	Vektormaske invertieren
+Layer Effects & Styles...	Ebeneneffekte und -stile...
+Legacy linear	Linear (alt)
+Line	Linie
+Luma only	Nur Luminanz
+Midtone contrast	Mitteltonkontrast
+Multiply	Multiplizieren
+New pixel layer	Neue Pixelebene
+Outputs 2D motion vectors between frames (needs video)	Gibt 2D-Bewegungsvektoren zwischen Bildern aus (Video erforderlich)
+Overlay	Ineinanderkopieren
+Paper Weave	Papiergeflecht
+Pen, shape and node tools edit the mask	Stift-, Form- und Knotenwerkzeuge bearbeiten die Maske
+Perlin	Perlin
+Pick neutral grey	Neutrales Grau auswählen
+Pinch	Zusammenziehen
+Preserve luminosity	Leuchtkraft erhalten
+Relative	Relativ
+Reseed Pattern	Muster neu initialisieren
+Reset Fluid	Fluid zurücksetzen
+Ridged Marble	Geriffelter Marmor
+Roughen	Aufrauen
+Roughen edges	Kanten aufrauen
+Salt & Pepper	Salz und Pfeffer
+Scanlines	Abtastzeilen
+Screen	Negativ multiplizieren
+Select a layer to add a mask	Eine Ebene auswählen, um eine Maske hinzuzufügen
+Sepia	Sepia
+Simplex	Simplex
+Slit-scan delay across frames (needs moving layer/video)	Schlitzscan-Verzögerung über Bilder hinweg (bewegte Ebene oder Video erforderlich)
+Soft Light	Weiches Licht
+Subdivide	Unterteilen
+Subdivide Path	Pfad unterteilen
+Subdivide Points	Punkte unterteilen
+Subdivide or deform vector shape	Vektorform unterteilen oder verformen
+Swirls this layer as fluid dye over time	Verwirbelt diese Ebene im Zeitverlauf wie Farbe in einer Flüssigkeit
+Sync Light Angle	Lichtwinkel synchronisieren
+Tint colour	Farbton
+To Path	In Pfad umwandeln
+Turbulence	Turbulenz
+Twist	Verdrehen
+Twist around centre	Um die Mitte verdrehen
+Underwater	Unter Wasser
+Uniform	Gleichmäßig
+Vector mask feather radius	Weichzeichnungsradius der Vektormaske
+Vector mask: click to draw or edit, Shift-click to turn it off	Vektormaske: klicken zum Zeichnen oder Bearbeiten, Umschalt-Klick zum Deaktivieren
+Voronoi Cells	Voronoi-Zellen
+Warming (81)	Erwärmung (81)
+Warming (85)	Erwärmung (85)
+Wave	Welle
+Wave deform	Wellenverformung
+Worley Cracks	Worley-Risse
+fBm Clouds	fBm-Wolken

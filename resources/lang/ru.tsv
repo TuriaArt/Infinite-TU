@@ -3969,3 +3969,101 @@ Border	Граница
 Accent	Акцент
 Reset theme colors	Сбросить цвета темы
 i	=en
+
+# Previously missing UI strings (machine-drafted; native review pending).
+1-frame delay buffer (for Node Graph feedback loops)	Буфер задержки на 1 кадр (для петель обратной связи в графе узлов)
+Accumulates motion or Zoom/Rotate/Drift echoes	Накапливает движение или эхо масштабирования, вращения и дрейфа
+Add layer mask (Shift-click: vector mask)	Добавить маску слоя (Shift+щелчок: векторная маска)
+Apply Formula	Применить формулу
+Bayer 4x4	Bayer 4x4
+Bayer 8x8	Bayer 8x8
+Blue / IGN	Синий / IGN
+Bulge	Выпуклость
+Bulge outward	Выпятить наружу
+Clear Trails	Очистить следы
+Click neutral grey	Щёлкните по нейтральному серому
+Clumping	Скопление
+Colour screen	Цветной экран
+Convert Shape to Path	Преобразовать фигуру в контур
+Convert shape into editable Bezier points (A)	Преобразовать фигуру в редактируемые точки Безье (A)
+Convert to editable Bezier anchors	Преобразовать в редактируемые опорные точки Безье
+Cooling (80)	Охлаждение (80)
+Cooling (82)	Охлаждение (82)
+Deep Emerald	Глубокий изумрудный
+Deform	Деформировать
+Deform Shape	Деформировать фигуру
+Detail	Детализация
+Direct-select and bend points	Выбирать и изгибать точки напрямую
+Direction	Направление
+Disable Vector Mask	Отключить векторную маску
+Dithered	С дизерингом
+Dot	Точка
+Double curve points	Удвоить точки кривой
+Draw and edit the vector mask	Рисовать и редактировать векторную маску
+Duplicate layer	Дублировать слой
+Edge	Край
+Edit Vector Mask	Редактировать векторную маску
+Edit Vector Points (A)	Редактировать точки вектора (A)
+Edit mask	Редактировать маску
+Edit points (A)	Редактировать точки (A)
+Enable Vector Mask	Включить векторную маску
+Feather	Растушёвка
+Film Grain	Зерно плёнки
+Fine Blue	Мелкий синий
+Formula	Формула
+Gaussian	Гауссовский
+Group selected layers	Сгруппировать выбранные слои
+Grows Gray-Scott patterns shaped by layer luma	Создаёт узоры Грея — Скотта по яркости слоя
+Invert Vector Mask	Инвертировать векторную маску
+Invert vector mask	Инвертировать векторную маску
+Layer Effects & Styles...	Эффекты и стили слоя...
+Legacy linear	Линейный (старый)
+Line	Линия
+Luma only	Только яркость
+Midtone contrast	Контраст средних тонов
+Multiply	Умножение
+New pixel layer	Новый пиксельный слой
+Outputs 2D motion vectors between frames (needs video)	Выводит двумерные векторы движения между кадрами (нужно видео)
+Overlay	Перекрытие
+Paper Weave	Бумажное плетение
+Pen, shape and node tools edit the mask	Маску можно редактировать пером, фигурами и узлами
+Perlin	Перлин
+Pick neutral grey	Выбрать нейтральный серый
+Pinch	Сжатие
+Preserve luminosity	Сохранять светимость
+Relative	Относительно
+Reseed Pattern	Пересоздать узор
+Reset Fluid	Сбросить жидкость
+Ridged Marble	Ребристый мрамор
+Roughen	Огрубить
+Roughen edges	Огрубить края
+Salt & Pepper	Соль и перец
+Scanlines	Строки развёртки
+Screen	Экран
+Select a layer to add a mask	Выберите слой, чтобы добавить маску
+Sepia	Сепия
+Simplex	Симплекс
+Slit-scan delay across frames (needs moving layer/video)	Задержка щелевой развёртки между кадрами (нужен движущийся слой или видео)
+Soft Light	Мягкий свет
+Subdivide	Разделить
+Subdivide Path	Разделить контур
+Subdivide Points	Разделить точки
+Subdivide or deform vector shape	Разделить или деформировать векторную фигуру
+Swirls this layer as fluid dye over time	Со временем закручивает слой как краситель в жидкости
+Sync Light Angle	Синхронизировать угол света
+Tint colour	Цвет тонирования
+To Path	В контур
+Turbulence	Турбулентность
+Twist	Скручивание
+Twist around centre	Закрутить вокруг центра
+Underwater	Под водой
+Uniform	Равномерно
+Vector mask feather radius	Радиус растушёвки векторной маски
+Vector mask: click to draw or edit, Shift-click to turn it off	Векторная маска: щёлкните для рисования или правки, Shift+щелчок — для отключения
+Voronoi Cells	Ячейки Вороного
+Warming (81)	Потепление (81)
+Warming (85)	Потепление (85)
+Wave	Волна
+Wave deform	Волновая деформация
+Worley Cracks	Трещины Уорли
+fBm Clouds	Облака fBm

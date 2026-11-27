@@ -3962,3 +3962,101 @@ Border	Borde
 Accent	Acento
 Reset theme colors	Restablecer colores del tema
 i	=en
+
+# Previously missing UI strings (machine-drafted; native review pending).
+1-frame delay buffer (for Node Graph feedback loops)	Búfer de retardo de 1 fotograma (para bucles de realimentación del grafo de nodos)
+Accumulates motion or Zoom/Rotate/Drift echoes	Acumula movimiento o ecos de zoom, rotación y deriva
+Add layer mask (Shift-click: vector mask)	Añadir máscara de capa (Mayús+clic: máscara vectorial)
+Apply Formula	Aplicar fórmula
+Bayer 4x4	Bayer 4x4
+Bayer 8x8	Bayer 8x8
+Blue / IGN	Azul / IGN
+Bulge	Abombar
+Bulge outward	Abombar hacia fuera
+Clear Trails	Borrar estelas
+Click neutral grey	Hacer clic en un gris neutro
+Clumping	Agrupamiento
+Colour screen	Pantalla de color
+Convert Shape to Path	Convertir forma en trazado
+Convert shape into editable Bezier points (A)	Convertir la forma en puntos Bézier editables (A)
+Convert to editable Bezier anchors	Convertir en puntos de anclaje Bézier editables
+Cooling (80)	Enfriamiento (80)
+Cooling (82)	Enfriamiento (82)
+Deep Emerald	Esmeralda intenso
+Deform	Deformar
+Deform Shape	Deformar forma
+Detail	Detalle
+Direct-select and bend points	Seleccionar y curvar puntos directamente
+Direction	Dirección
+Disable Vector Mask	Desactivar máscara vectorial
+Dithered	Tramado
+Dot	Punto
+Double curve points	Duplicar puntos de curva
+Draw and edit the vector mask	Dibujar y editar la máscara vectorial
+Duplicate layer	Duplicar capa
+Edge	Borde
+Edit Vector Mask	Editar máscara vectorial
+Edit Vector Points (A)	Editar puntos vectoriales (A)
+Edit mask	Editar máscara
+Edit points (A)	Editar puntos (A)
+Enable Vector Mask	Activar máscara vectorial
+Feather	Desvanecimiento
+Film Grain	Grano de película
+Fine Blue	Azul fino
+Formula	Fórmula
+Gaussian	Gaussiano
+Group selected layers	Agrupar capas seleccionadas
+Grows Gray-Scott patterns shaped by layer luma	Genera patrones de Gray-Scott según la luminancia de la capa
+Invert Vector Mask	Invertir máscara vectorial
+Invert vector mask	Invertir máscara vectorial
+Layer Effects & Styles...	Efectos y estilos de capa...
+Legacy linear	Lineal antiguo
+Line	Línea
+Luma only	Solo luminancia
+Midtone contrast	Contraste de tonos medios
+Multiply	Multiplicar
+New pixel layer	Nueva capa de píxeles
+Outputs 2D motion vectors between frames (needs video)	Genera vectores de movimiento 2D entre fotogramas (requiere vídeo)
+Overlay	Superponer
+Paper Weave	Trama de papel
+Pen, shape and node tools edit the mask	Las herramientas de pluma, forma y nodos editan la máscara
+Perlin	Perlin
+Pick neutral grey	Elegir gris neutro
+Pinch	Pellizcar
+Preserve luminosity	Conservar luminosidad
+Relative	Relativo
+Reseed Pattern	Regenerar patrón
+Reset Fluid	Restablecer fluido
+Ridged Marble	Mármol estriado
+Roughen	Rugosidad
+Roughen edges	Hacer rugosos los bordes
+Salt & Pepper	Sal y pimienta
+Scanlines	Líneas de exploración
+Screen	Trama
+Select a layer to add a mask	Seleccione una capa para añadir una máscara
+Sepia	Sepia
+Simplex	Simplex
+Slit-scan delay across frames (needs moving layer/video)	Retardo de barrido de rendija entre fotogramas (requiere capa en movimiento o vídeo)
+Soft Light	Luz suave
+Subdivide	Subdividir
+Subdivide Path	Subdividir trazado
+Subdivide Points	Subdividir puntos
+Subdivide or deform vector shape	Subdividir o deformar forma vectorial
+Swirls this layer as fluid dye over time	Arremolina esta capa como tinte en un fluido con el tiempo
+Sync Light Angle	Sincronizar ángulo de luz
+Tint colour	Color de tinte
+To Path	A trazado
+Turbulence	Turbulencia
+Twist	Girar
+Twist around centre	Girar alrededor del centro
+Underwater	Bajo el agua
+Uniform	Uniforme
+Vector mask feather radius	Radio de desvanecimiento de la máscara vectorial
+Vector mask: click to draw or edit, Shift-click to turn it off	Máscara vectorial: clic para dibujar o editar, Mayús+clic para desactivarla
+Voronoi Cells	Celdas de Voronoi
+Warming (81)	Calentamiento (81)
+Warming (85)	Calentamiento (85)
+Wave	Onda
+Wave deform	Deformación de onda
+Worley Cracks	Grietas de Worley
+fBm Clouds	Nubes fBm

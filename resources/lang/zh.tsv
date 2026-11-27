@@ -3963,3 +3963,101 @@ Border	边框
 Accent	强调色
 Reset theme colors	重置主题颜色
 i	=en
+
+# Previously missing UI strings (machine-drafted; native review pending).
+1-frame delay buffer (for Node Graph feedback loops)	1 帧延迟缓冲区（用于节点图反馈循环）
+Accumulates motion or Zoom/Rotate/Drift echoes	累积运动或缩放、旋转、漂移回声
+Add layer mask (Shift-click: vector mask)	添加图层蒙版（Shift 单击：矢量蒙版）
+Apply Formula	应用公式
+Bayer 4x4	Bayer 4x4
+Bayer 8x8	Bayer 8x8
+Blue / IGN	蓝色 / IGN
+Bulge	膨胀
+Bulge outward	向外膨胀
+Clear Trails	清除轨迹
+Click neutral grey	单击中性灰色
+Clumping	聚集
+Colour screen	彩色屏幕
+Convert Shape to Path	将形状转换为路径
+Convert shape into editable Bezier points (A)	将形状转换为可编辑的贝塞尔点（A）
+Convert to editable Bezier anchors	转换为可编辑的贝塞尔锚点
+Cooling (80)	冷色滤镜 (80)
+Cooling (82)	冷色滤镜 (82)
+Deep Emerald	深翠绿
+Deform	变形
+Deform Shape	形状变形
+Detail	细节
+Direct-select and bend points	直接选择并弯曲点
+Direction	方向
+Disable Vector Mask	禁用矢量蒙版
+Dithered	抖动
+Dot	点
+Double curve points	将曲线点数加倍
+Draw and edit the vector mask	绘制和编辑矢量蒙版
+Duplicate layer	复制图层
+Edge	边缘
+Edit Vector Mask	编辑矢量蒙版
+Edit Vector Points (A)	编辑矢量点（A）
+Edit mask	编辑蒙版
+Edit points (A)	编辑点（A）
+Enable Vector Mask	启用矢量蒙版
+Feather	羽化
+Film Grain	胶片颗粒
+Fine Blue	细蓝
+Formula	公式
+Gaussian	高斯
+Group selected layers	组合选中的图层
+Grows Gray-Scott patterns shaped by layer luma	根据图层亮度生成 Gray-Scott 图案
+Invert Vector Mask	反转矢量蒙版
+Invert vector mask	反转矢量蒙版
+Layer Effects & Styles...	图层效果和样式...
+Legacy linear	旧版线性
+Line	线
+Luma only	仅亮度
+Midtone contrast	中间调对比度
+Multiply	正片叠底
+New pixel layer	新建像素图层
+Outputs 2D motion vectors between frames (needs video)	输出帧间二维运动矢量（需要视频）
+Overlay	叠加
+Paper Weave	纸张编织
+Pen, shape and node tools edit the mask	使用钢笔、形状和节点工具编辑蒙版
+Perlin	Perlin
+Pick neutral grey	选取中性灰色
+Pinch	收缩
+Preserve luminosity	保留明度
+Relative	相对
+Reseed Pattern	重新生成图案
+Reset Fluid	重置流体
+Ridged Marble	棱纹大理石
+Roughen	粗糙化
+Roughen edges	粗糙化边缘
+Salt & Pepper	椒盐噪声
+Scanlines	扫描线
+Screen	滤色
+Select a layer to add a mask	选择图层以添加蒙版
+Sepia	棕褐色
+Simplex	Simplex
+Slit-scan delay across frames (needs moving layer/video)	跨帧狭缝扫描延迟（需要运动图层或视频）
+Soft Light	柔光
+Subdivide	细分
+Subdivide Path	细分路径
+Subdivide Points	细分点
+Subdivide or deform vector shape	细分或变形矢量形状
+Swirls this layer as fluid dye over time	随时间将此图层像流体染料一样旋动
+Sync Light Angle	同步光照角度
+Tint colour	着色颜色
+To Path	转为路径
+Turbulence	湍流
+Twist	扭转
+Twist around centre	围绕中心扭转
+Underwater	水下
+Uniform	均匀
+Vector mask feather radius	矢量蒙版羽化半径
+Vector mask: click to draw or edit, Shift-click to turn it off	矢量蒙版：单击绘制或编辑，Shift 单击关闭
+Voronoi Cells	沃罗诺伊单元
+Warming (81)	暖色滤镜 (81)
+Warming (85)	暖色滤镜 (85)
+Wave	波浪
+Wave deform	波浪变形
+Worley Cracks	Worley 裂纹
+fBm Clouds	fBm 云

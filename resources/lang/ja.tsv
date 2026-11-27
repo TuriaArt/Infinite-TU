@@ -3963,3 +3963,101 @@ Border	枠線
 Accent	アクセント
 Reset theme colors	テーマの色をリセット
 i	=en
+
+# Previously missing UI strings (machine-drafted; native review pending).
+1-frame delay buffer (for Node Graph feedback loops)	1フレーム遅延バッファ（ノードグラフのフィードバックループ用）
+Accumulates motion or Zoom/Rotate/Drift echoes	動きやズーム・回転・ドリフトの残像を蓄積
+Add layer mask (Shift-click: vector mask)	レイヤーマスクを追加（Shiftクリック：ベクターマスク）
+Apply Formula	数式を適用
+Bayer 4x4	Bayer 4x4
+Bayer 8x8	Bayer 8x8
+Blue / IGN	ブルー / IGN
+Bulge	膨張
+Bulge outward	外側に膨らませる
+Clear Trails	軌跡を消去
+Click neutral grey	ニュートラルグレーをクリック
+Clumping	凝集
+Colour screen	カラースクリーン
+Convert Shape to Path	シェイプをパスに変換
+Convert shape into editable Bezier points (A)	シェイプを編集可能なベジェ点に変換（A）
+Convert to editable Bezier anchors	編集可能なベジェアンカーポイントに変換
+Cooling (80)	寒色フィルター (80)
+Cooling (82)	寒色フィルター (82)
+Deep Emerald	ディープエメラルド
+Deform	変形
+Deform Shape	シェイプを変形
+Detail	ディテール
+Direct-select and bend points	点を直接選択して曲げる
+Direction	方向
+Disable Vector Mask	ベクターマスクを無効化
+Dithered	ディザリング
+Dot	点
+Double curve points	曲線の点を倍増
+Draw and edit the vector mask	ベクターマスクを描画・編集
+Duplicate layer	レイヤーを複製
+Edge	エッジ
+Edit Vector Mask	ベクターマスクを編集
+Edit Vector Points (A)	ベクター点を編集（A）
+Edit mask	マスクを編集
+Edit points (A)	点を編集（A）
+Enable Vector Mask	ベクターマスクを有効化
+Feather	ぼかし
+Film Grain	フィルム粒子
+Fine Blue	ファインブルー
+Formula	数式
+Gaussian	ガウス
+Group selected layers	選択したレイヤーをグループ化
+Grows Gray-Scott patterns shaped by layer luma	レイヤーの輝度に応じてGray-Scottパターンを生成
+Invert Vector Mask	ベクターマスクを反転
+Invert vector mask	ベクターマスクを反転
+Layer Effects & Styles...	レイヤーの効果とスタイル...
+Legacy linear	旧リニア
+Line	線
+Luma only	輝度のみ
+Midtone contrast	中間調のコントラスト
+Multiply	乗算
+New pixel layer	新規ピクセルレイヤー
+Outputs 2D motion vectors between frames (needs video)	フレーム間の2Dモーションベクトルを出力（動画が必要）
+Overlay	オーバーレイ
+Paper Weave	ペーパー織り
+Pen, shape and node tools edit the mask	ペン、シェイプ、ノードツールでマスクを編集
+Perlin	Perlin
+Pick neutral grey	ニュートラルグレーを選択
+Pinch	つまむ
+Preserve luminosity	輝度を維持
+Relative	相対
+Reseed Pattern	パターンを再生成
+Reset Fluid	流体をリセット
+Ridged Marble	筋入り大理石
+Roughen	粗くする
+Roughen edges	エッジを粗くする
+Salt & Pepper	ソルト＆ペッパー
+Scanlines	走査線
+Screen	スクリーン
+Select a layer to add a mask	マスクを追加するレイヤーを選択
+Sepia	セピア
+Simplex	シンプレックス
+Slit-scan delay across frames (needs moving layer/video)	フレーム間のスリットスキャン遅延（動くレイヤーか動画が必要）
+Soft Light	ソフトライト
+Subdivide	分割
+Subdivide Path	パスを分割
+Subdivide Points	点を分割
+Subdivide or deform vector shape	ベクターシェイプを分割または変形
+Swirls this layer as fluid dye over time	このレイヤーを流体中の染料のように時間とともに渦巻かせる
+Sync Light Angle	光の角度を同期
+Tint colour	色合い
+To Path	パスに変換
+Turbulence	乱流
+Twist	ねじる
+Twist around centre	中心を軸にねじる
+Underwater	水中
+Uniform	均一
+Vector mask feather radius	ベクターマスクのぼかし半径
+Vector mask: click to draw or edit, Shift-click to turn it off	ベクターマスク：クリックで描画・編集、Shiftクリックで無効化
+Voronoi Cells	ボロノイセル
+Warming (81)	暖色フィルター (81)
+Warming (85)	暖色フィルター (85)
+Wave	波
+Wave deform	波状変形
+Worley Cracks	Worleyのひび割れ
+fBm Clouds	fBmの雲
