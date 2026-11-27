@@ -29,6 +29,8 @@ extern float gViewportPanelWidth;
 
 extern float gViewportPanelHeight;
 
+extern float gInspectorWidth;
+
 
    inline const float kViewportPanelMinWidth = tok::dock_viewport_min_w;
 

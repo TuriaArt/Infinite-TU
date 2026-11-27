@@ -535,8 +535,11 @@ void DrawLayout(FrameCtx& fc)
       }
       // The inspector shares the canvas row with the other right docks. Give
       // the canvas its minimum first; narrow windows scroll the panel's body.
+      // Its width is a drag-resizable state (gInspectorWidth), clamped here
+      // against the room left after the other right docks - the same pattern
+      // the viewport panel's width follows.
       fc.inspectorWidth = gInspectorOpen && !fc.viewFill
-         ? std::max(0.0f, std::min(kAudioNodeWidth + tok::space_4 + tok::space_4,
+         ? std::max(0.0f, std::min(gInspectorWidth,
                                     Ui::AvailW() - rightReserved - tok::dock_canvas_min_w))
          : 0.0f;
       if (fc.inspectorWidth <= tok::space_4 + tok::space_4)

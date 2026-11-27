@@ -12,6 +12,11 @@ namespace app
 
    float gViewportPanelHeight = tok::app_state_viewport_panel_height;
 
+   // The node inspector's width: like the viewport panel, its canvas-facing
+   // edge is a drag handle, so this is a starting size, not a fixed one.
+   // Clamped against the window every frame - see the layout section.
+   float gInspectorWidth = kAudioNodeWidth + tok::space_4 + tok::space_4;
+
 
    // Backdrop for any node preview about to blit a texture: a flat dark rect
    // reads as solid black wherever that texture is actually transparent, so

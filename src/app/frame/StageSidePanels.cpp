@@ -12,6 +12,7 @@
 #include "app/ui/design/components/PillGroup.h"
 #include "app/ui/design/components/LibraryParts.h"
 #include "app/ui/design/components/PanelFrame.h"
+#include "app/ui/design/UiInteract.h"
 #include "app/ui/design/components/ChipButton.h"
 #include "app/ui/design/components/Divider.h"
 #include "app/ui/design/UiScope.h"
@@ -163,8 +164,37 @@ static void DrawNodeInspector(float width, float height)
                                       target.Pinned() && FindNodeByUid(target.Pinned()) != nullptr);
    GraphNode* node = FindNodeByUid(uid);
 
+   // The inspector's canvas-facing (left) edge is a resize grip, the same pattern the viewport panel uses: a thin
+   // strip reserved inside the panel's own outer child, so it belongs to the panel's window and reliably takes the
+   // hover (a strip drawn just outside would be over the node canvas, whose window would win the hover instead).
+   const float kGrip = PanelFrame::kGap;
+   ImGui::BeginChild("##nodeinspector_outer", ImVec2(width, height), false);
+   const ImVec2 inner = Ui::Avail();
+   auto grip = [&]()
+   {
+      UiInteract::Hit("##inspectorgrip", ImVec2(kGrip, std::max(1.0f, inner.y)));
+      // The panel's canvas-facing boundary, and the only thing that marks it: one hairline (see DrawPanelSeam).
+      DrawPanelSeam(true, true);
+      if (ImGui::IsItemHovered() || ImGui::IsItemActive())
+         ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+      if (ImGui::IsItemActive())
+      {
+         // The canvas is to the panel's left, so dragging the grip left (negative delta) grows the panel.
+         const ImVec2 d = ImGui::GetIO().MouseDelta;
+         gInspectorWidth -= d.x;
+         gInspectorWidth = std::max(kParamWidthBase, gInspectorWidth);
+      }
+   };
+   grip();
+   Ui::SameRow();
+   // The grip and the card sit on one row with ImGui's item spacing between them, so the card has to give up
+   // that spacing as well as the grip itself - otherwise the two together overrun the panel and the panel
+   // grows a scrollbar of its own.
+   const ImVec2 gap = ImGui::GetStyle().ItemSpacing;
+   PanelFrame::Insets in;
+   in.l = 0.0f; // the grip side needs no inset of its own
    PushDockedPanelStyle(true);
-   PanelFrame::BeginCard("##nodeinspector", ImVec2(width, height), {}, ImGuiWindowFlags_NoScrollbar);
+   PanelFrame::BeginCard("##nodeinspector", ImVec2(std::max(1.0f, inner.x - kGrip - gap.x), inner.y), in, ImGuiWindowFlags_NoScrollbar);
    PopDockedPanelStyle();
    const float headerY = ImGui::GetCursorPosY();
    ImGui::TextUnformatted(node ? NodeTitleWithInstance(*node).c_str() : T("Node inspector"));
@@ -222,6 +252,14 @@ static void DrawNodeInspector(float width, float height)
    }
    PanelFrame::EndScrollContent();
    PanelFrame::EndCard();
+   // Zeroed only around EndChild, which is where ImGui charges the gap that follows this panel - the panel's own
+   // contents above keep normal spacing. Without this, the ItemSpacing between the panel and whatever is laid out
+   // next shows a strip of the shell window's windowBg, which reads as a bar separating the two panels.
+   // Set directly, not pushed: a push made in the child and popped in the parent unbalances both stacks.
+   const ImVec2 savedSpacing = ImGui::GetStyle().ItemSpacing;
+   ImGui::GetStyle().ItemSpacing = ImVec2(0.0f, 0.0f);
+   EndChildSafe();
+   ImGui::GetStyle().ItemSpacing = savedSpacing;
    ed::SetCurrentEditor(nullptr);
 }
 
