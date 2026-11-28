@@ -9602,6 +9602,21 @@ namespace Platform
       }
    }
 
+   // Ollama helpers: macOS is a stub for now (the custom-agent panel reports "not found").
+   // Standard macOS locations (/Applications/Ollama.app/Contents/MacOS/ollama, ~/.ollama) can be
+   // completed here later without any UI changes, mirroring PlatformWin.cpp's search.
+   std::string FindOllamaExecutable()
+   {
+      return std::string();
+   }
+
+   bool StartDetachedProcess(const std::string& exe, const std::vector<std::string>& args)
+   {
+      (void)exe;
+      (void)args;
+      return false;
+   }
+
    bool SecretStore(const std::string& account, const std::string& secret)
    {
       if (account.empty())

@@ -20,6 +20,11 @@
 
 namespace chat
 {
+   // Request timeout (seconds) shared by every OpenAI-compatible probe the settings panel makes:
+   // the connection test and the model list. One constant so the panel never shows one endpoint
+   // waiting 20s and another 30s for the same server.
+   inline constexpr int kOpenAIRequestTimeoutSec = 30;
+
    struct CustomPreset
    {
       const char* id;
@@ -82,6 +87,23 @@ namespace chat
 
    // The model ids in an OpenAI-compatible /models response body ("{"data":[{"id":...}]}").
    std::vector<std::string> ParseOpenAIModels(const std::string& text);
+
+   // Semantic class of a raw HTTP failure, so the settings panel can answer with a diagnosis
+   // (the server is not running, the request timed out, ...) instead of a raw WinHTTP/curl string.
+   enum class HttpErrorKind
+   {
+      kNone,
+      kConnectionRefused, // connect-level failure: nothing is listening on that host/port
+      kTimeout,           // the request never completed in time
+      kTLS,               // handshake/certificate failure
+      kHTTPStatus,        // a response arrived but was not 2xx
+      kOther
+   };
+
+   HttpErrorKind ClassifyHttpError(const std::string& rawError);
+   // Localized, human-readable message for a classified failure. `rawError` is the platform's
+   // original string, appended in parentheses so the diagnosis stays debuggable.
+   std::string DescribeHttpError(HttpErrorKind kind, const std::string& rawError);
 
    // Synchronous model list (run on a worker thread from UI): GET {base}/models, the
    // OpenAI-compatible list endpoint Ollama and the hosted providers all answer.

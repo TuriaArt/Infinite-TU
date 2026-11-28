@@ -1548,6 +1548,21 @@ namespace Platform
       return true;
    }
 
+   // Ollama helpers: Linux is a stub for now (the custom-agent panel reports "not found").
+   // Standard Linux locations (~/.ollama, /usr/local/bin, /usr/bin) can be completed here later
+   // without any UI changes, mirroring PlatformWin.cpp's search.
+   std::string FindOllamaExecutable()
+   {
+      return std::string();
+   }
+
+   bool StartDetachedProcess(const std::string& exe, const std::vector<std::string>& args)
+   {
+      (void)exe;
+      (void)args;
+      return false;
+   }
+
    bool SecretStore(const std::string& account, const std::string& secret)
    {
       if (account.empty())

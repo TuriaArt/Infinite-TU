@@ -4065,3 +4065,19 @@ Wave	Onda
 Wave deform	Deformación de onda
 Worley Cracks	Grietas de Worley
 fBm Clouds	Nubes fBm
+Connecting…	Conectando…
+Connection refused. The server is not running, or is on another host/port.	Conexión rechazada. El servidor no está en ejecución o está en otro host/puerto.
+Error:	Error:
+Failed to start Ollama	No se pudo iniciar Ollama
+Model list request failed.	La solicitud de la lista de modelos falló.
+Model list request timed out.	Tiempo de espera agotado para la lista de modelos.
+Ollama is already running.	Ollama ya está en ejecución.
+Ollama is not running	Ollama no está en ejecución
+Ollama not found. Install it and restart the app.	Ollama no encontrado. Instálelo y reinicie la aplicación.
+Ollama started.	Ollama iniciado.
+Start Ollama	Iniciar Ollama
+Starting Ollama…	Iniciando Ollama…
+The request failed.	La solicitud falló.
+The request timed out.	Tiempo de espera agotado.
+The server answered with an error status.	El servidor respondió con un estado de error.
+TLS/certificate error while connecting.	Error de TLS/certificado al conectar.

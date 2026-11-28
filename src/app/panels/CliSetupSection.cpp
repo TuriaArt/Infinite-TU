@@ -25,6 +25,7 @@
 #include "platform/Platform.h"
 
 #include <atomic>
+#include <chrono>
 #include <cstring>
 #include <ctime>
 #include <vector>
@@ -69,6 +70,16 @@ namespace app
          else
             dl->AddLine(ImVec2(c.x - r * tok::cli_setup_section_line_x, c.y), ImVec2(c.x + r * tok::cli_setup_section_line_x, c.y), ImGui::GetColorU32(ImGuiCol_TextDisabled), tok::cli_setup_section_step_icon_stroke);
          Ui::Claim(ImVec2(size, size));
+      }
+
+      // True when the base URL points at the local machine, where a local Ollama would listen
+      // (127.0.0.1, localhost, ::1). Used to turn a generic "connection refused" into the
+      // actionable "Ollama is not running" diagnosis.
+      bool IsLocalBaseUrl(const std::string& url)
+      {
+         return url.find("127.0.0.1") != std::string::npos ||
+                url.find("localhost") != std::string::npos ||
+                url.find("[::1]") != std::string::npos;
       }
    }
 
@@ -346,6 +357,8 @@ namespace app
          static std::string sTestStatus;
          static std::vector<std::string> sModelList;      // ids the endpoint listed, most recent check
          static std::atomic<bool> sModelListLoading{ false };
+         static std::chrono::steady_clock::time_point sModelListStart;  // watchdog start, see Browse handler
+         static std::atomic<bool> sModelListWantPopup{ false };  // result arrived after the popup was closed: reopen it
 
          if (sLoadedUrl != prefs.customBaseUrl)
          {
@@ -419,25 +432,62 @@ namespace app
                Platform::SecretLoad("custom_agent_api_key", key);
             if (!sModelListLoading.exchange(true))
             {
+               sModelListStart = std::chrono::steady_clock::now();
+               // Detached worker, value-captured url/key only. It never calls ImGui; the only
+               // lifetime risk is the app shutting down mid-request, which is safe here: the
+               // statics outlive the window, the worker only writes them under sTestMutex, and
+               // the flag is always cleared (try/catch + the render watchdog below), so a
+               // crashed request can never leave sModelListLoading stuck and the button dead.
                std::thread([url, key]() {
                   std::vector<std::string> models;
                   std::string msg;
-                  const bool ok = chat::ListOpenAIModels(url, key, models, msg);
+                  bool ok = false;
+                  try
+                  {
+                     ok = chat::ListOpenAIModels(url, key, models, msg);
+                  }
+                  catch (const std::exception& e)
+                  {
+                     models.clear();
+                     msg = std::string(T("The request failed.")) + " (" + e.what() + ")";
+                  }
                   {
                      std::lock_guard<std::mutex> lock(sTestMutex);
                      sModelList = std::move(models);
                      sTestStatus = ok ? msg : (msg.empty() ? std::string(T("No models listed")) : msg);
                   }
                   sModelListLoading.store(false);
+                  // The popup may have been closed (click-outside) while the request was in
+                  // flight: ask the render loop to open it again with the finished result.
+                  sModelListWantPopup.store(true);
                }).detach();
             }
+            // Re-open on every click, even while a load is already running - it may hold a
+            // result the user has not seen yet.
             ImGui::OpenPopup("##custommodels");
          }
+         // A result that arrived after the user closed the popup (click-outside while the
+         // request was in flight) is re-shown by opening it again - otherwise the finished
+         // list or error would only live in the status row below, out of view.
+         if (sModelListWantPopup.load() && !ImGui::IsPopupOpen("##custommodels"))
+            ImGui::OpenPopup("##custommodels");
          if (MenuParts::BeginPopup("##custommodels"))
          {
+            // Watchdog: a worker that died without clearing the flag (or a request that hung
+            // past the shared timeout) would leave the button silently dead and the popup
+            // stuck on "Loading…". Force-finish and report the failure instead.
+            if (sModelListLoading.load() &&
+                std::chrono::steady_clock::now() - sModelListStart >
+                   std::chrono::seconds(chat::kOpenAIRequestTimeoutSec + 10))
+            {
+               std::lock_guard<std::mutex> lock(sTestMutex);
+               sModelList.clear();
+               sTestStatus = T("Model list request timed out.");
+               sModelListLoading.store(false);
+            }
             if (sModelListLoading.load())
             {
-               ImGui::TextUnformatted(T("Loading…"));
+               ImGui::TextUnformatted(T("Connecting…"));
             }
             else
             {
@@ -454,10 +504,23 @@ namespace app
                   }
                }
                if (sModelList.empty())
-                  ImGui::TextUnformatted(T("No models listed"));
+               {
+                  // Surface the actual failure here, not only "No models listed": the status
+                  // row below may be scrolled out of view. TextUnformatted + concatenation, not
+                  // a printf-style Text: sTestStatus can carry a raw server error body that may
+                  // itself contain format specifiers.
+                  if (!sTestStatus.empty())
+                     ImGui::TextUnformatted((std::string(T("Error:")) + " " + sTestStatus).c_str());
+                  else
+                     ImGui::TextUnformatted(T("No models listed"));
+               }
             }
             MenuParts::EndPopup();
          }
+         // The popup is closed again (click-outside / Esc): stop requesting reopens until the
+         // next Browse click or a new result.
+         if (!ImGui::IsPopupOpen("##custommodels"))
+            sModelListWantPopup.store(false);
 
          FormParts::Label(L("API key"));
          ImGui::SetNextItemWidth(-1.0f);
@@ -482,7 +545,13 @@ namespace app
          FormParts::Label(L("Connection"));
          {
             std::lock_guard<std::mutex> lock(sTestMutex);
-            const std::string statusText = sTesting.load() ? std::string(T("Testing…")) : (sTestStatus.empty() ? std::string(T("Not tested")) : sTestStatus);
+            std::string statusText = sTesting.load() ? std::string(T("Testing…")) : (sTestStatus.empty() ? std::string(T("Not tested")) : sTestStatus);
+            // A refused connection to a local base URL means the local Ollama is not running:
+            // say so instead of the generic diagnosis (the Start Ollama button sits right below).
+            if (!statusText.empty() && !sTesting.load() &&
+                chat::ClassifyHttpError(statusText) == chat::HttpErrorKind::kConnectionRefused &&
+                IsLocalBaseUrl(prefs.customBaseUrl))
+               statusText = T("Ollama is not running");
             value(statusText, sTestStatus.empty() && !sTesting.load());
          }
          ImGui::BeginDisabled(sTesting.load());
@@ -519,6 +588,67 @@ namespace app
                   sModelList = std::move(models);
                }
                sTesting.store(false);
+            }).detach();
+         }
+
+         // Start the local Ollama server in the background (only meaningful for a local base
+         // URL). The probe first: if a server is already answering, never launch a second
+         // instance - just report that it is running and refresh the model list.
+         if (button(L("Start Ollama"), false))
+         {
+            const std::string url = sUrlBuf;
+            std::string key;
+            if (sKeyBuf[0] != '\0')
+               Platform::SecretLoad("custom_agent_api_key", key);
+            // Detached worker, value-captured url/key only; same lifetime caveat as the Browse
+            // worker above - no ImGui calls from the worker, statics outlive the window.
+            std::thread([url, key]() {
+               std::vector<std::string> models;
+               std::string msg;
+               if (chat::ListOpenAIModels(url, key, models, msg))
+               {
+                  std::lock_guard<std::mutex> lock(sTestMutex);
+                  sModelList = std::move(models);
+                  sTestStatus = T("Ollama is already running.");
+                  sModelListWantPopup.store(true);
+                  return;
+               }
+               const std::string exe = Platform::FindOllamaExecutable();
+               if (exe.empty())
+               {
+                  std::lock_guard<std::mutex> lock(sTestMutex);
+                  sTestStatus = T("Ollama not found. Install it and restart the app.");
+                  return;
+               }
+               if (!Platform::StartDetachedProcess(exe, { "serve" }))
+               {
+                  std::lock_guard<std::mutex> lock(sTestMutex);
+                  sTestStatus = T("Failed to start Ollama");
+                  return;
+               }
+               {
+                  // Lock only around the status write: the mutex must be free while we sleep
+                  // and probe, or the second lock below would deadlock on the same thread.
+                  std::lock_guard<std::mutex> lock(sTestMutex);
+                  sTestStatus = T("Starting Ollama…");
+               }
+               // Give the server a moment to bind its port, then probe again so the outcome is
+               // visible without a second click.
+               std::this_thread::sleep_for(std::chrono::seconds(2));
+               std::vector<std::string> models2;
+               std::string msg2;
+               if (chat::ListOpenAIModels(url, key, models2, msg2))
+               {
+                  std::lock_guard<std::mutex> lock2(sTestMutex);
+                  sModelList = std::move(models2);
+                  sTestStatus = T("Ollama started.");
+                  sModelListWantPopup.store(true);
+               }
+               else
+               {
+                  std::lock_guard<std::mutex> lock2(sTestMutex);
+                  sTestStatus = msg2;
+               }
             }).detach();
          }
          ImGui::EndDisabled();

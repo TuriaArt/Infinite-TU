@@ -1,6 +1,7 @@
 #include "core/chat/OpenAIAgent.h"
 
 #include "core/chat/LocalProtocol.h"
+#include "core/I18n.h"
 #include "platform/Platform.h"
 
 #include <algorithm>
@@ -19,7 +20,9 @@ namespace chat
 
       bool ContainsAscii(const std::string& hay, const char* needle)
       {
-         return LowerAscii(hay).find(needle) != std::string::npos;
+         // Case-insensitive on both sides: callers pass either raw platform strings (mixed case)
+         // or lowercase fragments, and both must match.
+         return LowerAscii(hay).find(LowerAscii(needle)) != std::string::npos;
       }
    }
 
@@ -325,11 +328,11 @@ namespace chat
             raw += chunk;
             return true;
          },
-         status, errBody, netErr, 20);
+         status, errBody, netErr, kOpenAIRequestTimeoutSec);
       if (!ok)
       {
          if (!netErr.empty())
-            outMessage = netErr;
+            outMessage = DescribeHttpError(ClassifyHttpError(netErr), netErr);
          else if (!errBody.empty())
             outMessage = "HTTP " + std::to_string(status) + ": " + errBody.substr(0, 180);
          else
@@ -357,6 +360,55 @@ namespace chat
       return out;
    }
 
+   HttpErrorKind ClassifyHttpError(const std::string& rawError)
+   {
+      if (rawError.empty())
+         return HttpErrorKind::kNone;
+      // Patterns cover both the WinHTTP paths (PlatformWin.cpp) and the curl paths
+      // (PlatformLinux.cpp / Platform.mm): "WinHttpConnect failed", "WinHTTP error 12029",
+      // "Connection refused", "curl error 7", and so on.
+      if (ContainsAscii(rawError, "WinHttpConnect failed") || ContainsAscii(rawError, "WinHTTP error 12029") ||
+          ContainsAscii(rawError, "connection refused") || ContainsAscii(rawError, "curl error 7") ||
+          ContainsAscii(rawError, "failed to connect"))
+         return HttpErrorKind::kConnectionRefused;
+      if (ContainsAscii(rawError, "WinHTTP error 12005") || ContainsAscii(rawError, "timed out") ||
+          ContainsAscii(rawError, "timeout") || ContainsAscii(rawError, "curl error 28"))
+         return HttpErrorKind::kTimeout;
+      if (ContainsAscii(rawError, "WinHTTP error 12027") || ContainsAscii(rawError, "security channel") ||
+          ContainsAscii(rawError, "tls") || ContainsAscii(rawError, "ssl") || ContainsAscii(rawError, "certificate"))
+         return HttpErrorKind::kTLS;
+      if (ContainsAscii(rawError, "http status"))
+         return HttpErrorKind::kHTTPStatus;
+      return HttpErrorKind::kOther;
+   }
+
+   std::string DescribeHttpError(HttpErrorKind kind, const std::string& rawError)
+   {
+      std::string msg;
+      switch (kind)
+      {
+      case HttpErrorKind::kConnectionRefused:
+         msg = I18n::T("Connection refused. The server is not running, or is on another host/port.");
+         break;
+      case HttpErrorKind::kTimeout:
+         msg = I18n::T("The request timed out.");
+         break;
+      case HttpErrorKind::kTLS:
+         msg = I18n::T("TLS/certificate error while connecting.");
+         break;
+      case HttpErrorKind::kHTTPStatus:
+         msg = I18n::T("The server answered with an error status.");
+         break;
+      default:
+         msg = I18n::T("The request failed.");
+         break;
+      }
+      // Keep the platform's original string visible so the diagnosis stays debuggable.
+      if (!rawError.empty())
+         msg += " (" + rawError + ")";
+      return msg;
+   }
+
    bool ListOpenAIModels(const std::string& baseUrl, const std::string& apiKey,
                          std::vector<std::string>& outModels, std::string& outMessage)
    {
@@ -368,9 +420,10 @@ namespace chat
          return false;
       }
       std::string body, httpErr;
-      if (!Platform::HttpGet(base + "/models", "Infinite", body, httpErr, 20, apiKey))
+      if (!Platform::HttpGet(base + "/models", "Infinite", body, httpErr, kOpenAIRequestTimeoutSec, apiKey))
       {
-         outMessage = httpErr.empty() ? "Model list request failed." : httpErr;
+         outMessage = httpErr.empty() ? I18n::T("Model list request failed.")
+                                      : DescribeHttpError(ClassifyHttpError(httpErr), httpErr);
          return false;
       }
       outModels = ParseOpenAIModels(body);

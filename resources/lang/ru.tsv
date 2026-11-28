@@ -4072,3 +4072,19 @@ Wave	Волна
 Wave deform	Волновая деформация
 Worley Cracks	Трещины Уорли
 fBm Clouds	Облака fBm
+Connecting…	Подключаюсь…
+Connection refused. The server is not running, or is on another host/port.	Соединение отклонено. Сервер не запущен или находится на другом хосте/порту.
+Error:	Ошибка:
+Failed to start Ollama	Не удалось запустить Ollama
+Model list request failed.	Не удалось запросить список моделей.
+Model list request timed out.	Запрос списка моделей превысил время ожидания.
+Ollama is already running.	Ollama уже запущен.
+Ollama is not running	Ollama не запущена
+Ollama not found. Install it and restart the app.	Ollama не найден. Установите Ollama и перезапустите приложение.
+Ollama started.	Ollama запущен.
+Start Ollama	Запустить Ollama
+Starting Ollama…	Запуск Ollama…
+The request failed.	Запрос не выполнен.
+The request timed out.	Время ожидания истекло.
+The server answered with an error status.	Сервер ответил ошибочным статусом.
+TLS/certificate error while connecting.	Ошибка TLS/сертификата при соединении.

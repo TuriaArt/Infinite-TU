@@ -1771,6 +1771,18 @@ namespace Platform
    bool SecretLoad(const std::string& account, std::string& outSecret);
    bool SecretClear(const std::string& account);
 
+   // ---- Ollama (custom OpenAI-compatible agent panel) -------------------------------------
+   // Standard install locations of the Ollama executable, checked in order (PATH last). Returns
+   // the absolute path, or "" when Ollama is not installed. Implemented per OS: Windows searches
+   // the installer paths + PATH; macOS/Linux currently return "" (stub) so the panel can report
+   // "not found" without UI changes, and the paths can be completed per OS later.
+   std::string FindOllamaExecutable();
+
+   // Starts `exe` with `args` as a detached background process, no console window (CREATE_NO_WINDOW
+   // on Windows). Returns true when the process was launched. Windows is implemented; macOS/Linux
+   // are stubs returning false until the per-OS launch is completed.
+   bool StartDetachedProcess(const std::string& exe, const std::vector<std::string>& args);
+
    // ---- output/projector window (Windows only) ----------------------------
    // Windows has no OS-level "make this app window fullscreen" affordance -
    // maximise keeps the title bar and taskbar, and an ordinary window stays

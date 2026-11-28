@@ -1516,7 +1516,9 @@ namespace Platform
       WinHttpHandleGuard connect(WinHttpConnect(session, parts.lpszHostName, parts.nPort, 0));
       if (!connect.handle)
       {
-         outError = "WinHttpConnect failed";
+         // 12029 = nothing is listening on that host/port: the classic "Ollama is not running".
+         const DWORD err = GetLastError();
+         outError = "WinHttpConnect failed (WinHTTP error " + std::to_string((long)err) + ")";
          return false;
       }
 
@@ -1540,7 +1542,10 @@ namespace Platform
              WINHTTP_NO_REQUEST_DATA, 0, 0, 0) ||
           !WinHttpReceiveResponse(request, nullptr))
       {
-         outError = "request failed (network or TLS error)";
+         // Surface the WinHTTP error code (12005 timeout, 12027 TLS, 12029 connection refused, ...)
+         // so chat::ClassifyHttpError can turn the raw string into a diagnosis.
+         const DWORD err = GetLastError();
+         outError = "request failed (network or TLS error, WinHTTP error " + std::to_string((long)err) + ")";
          return false;
       }
 
@@ -1631,7 +1636,9 @@ namespace Platform
       WinHttpHandleGuard connect(WinHttpConnect(session, parts.lpszHostName, parts.nPort, 0));
       if (!connect.handle)
       {
-         outError = "WinHttpConnect failed";
+         // 12029 = nothing is listening on that host/port.
+         const DWORD err = GetLastError();
+         outError = "WinHttpConnect failed (WinHTTP error " + std::to_string((long)err) + ")";
          return false;
       }
       WinHttpHandleGuard request(WinHttpOpenRequest(connect, L"GET", parts.lpszUrlPath,
@@ -1963,7 +1970,9 @@ namespace Platform
       WinHttpHandleGuard connect(WinHttpConnect(session, parts.lpszHostName, parts.nPort, 0));
       if (!connect)
       {
-         outError = "WinHttpConnect failed";
+         // 12029 = nothing is listening on that host/port: the classic "Ollama is not running".
+         const DWORD err = GetLastError();
+         outError = "WinHttpConnect failed (WinHTTP error " + std::to_string((long)err) + ")";
          return false;
       }
 
@@ -2037,6 +2046,71 @@ namespace Platform
          outError = "http status " + std::to_string(outStatus);
          return false;
       }
+      return true;
+   }
+
+   // ---- Ollama helpers (custom agent panel: model browsing, diagnostics, auto-start) ---------
+
+   // Standard install locations of ollama.exe, checked in order. PATH is searched last so a
+   // user-installed copy wins over a stale system one. Returns "" when nothing is found.
+   std::string FindOllamaExecutable()
+   {
+      const std::vector<std::wstring> dirs = {
+         // Default installer location (per-machine) and the per-user fallback.
+         L"C:\\Program Files\\Ollama",
+         L"C:\\Program Files (x86)\\Ollama",
+      };
+      // %LOCALAPPDATA% and %PROGRAMDATA% are resolved via the environment, not hardcoded.
+      wchar_t localAppData[MAX_PATH] = {};
+      wchar_t programData[MAX_PATH] = {};
+      if (GetEnvironmentVariableW(L"LOCALAPPDATA", localAppData, MAX_PATH) > 0)
+         dirs.push_back(std::wstring(localAppData) + L"\\Program Files\\Ollama");
+      if (GetEnvironmentVariableW(L"PROGRAMDATA", programData, MAX_PATH) > 0)
+         dirs.push_back(std::wstring(programData) + L"\\Ollama");
+
+      for (const std::wstring& dir : dirs)
+      {
+         const std::wstring exe = dir + L"\\ollama.exe";
+         DWORD attr = GetFileAttributesW(exe.c_str());
+         if (attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_DIRECTORY) == 0)
+            return WinCommon::WideToUtf8(exe.c_str());
+      }
+
+      // PATH: SearchPathW finds ollama.exe anywhere on it (and in the current directory).
+      wchar_t found[MAX_PATH] = {};
+      const DWORD n = SearchPathW(nullptr, L"ollama.exe", found, MAX_PATH, nullptr);
+      if (n > 0 && n < MAX_PATH)
+         return WinCommon::WideToUtf8(found);
+      return std::string();
+   }
+
+   // Starts `exe` with `args` detached and without a console window (CREATE_NO_WINDOW), so
+   // `ollama serve` runs in the background. Returns true when the process was launched.
+   bool StartDetachedProcess(const std::string& exe, const std::vector<std::string>& args)
+   {
+      if (exe.empty())
+         return false;
+      std::wstring cmd = WinCommon::Utf8ToWide(exe);
+      for (const std::string& a : args)
+      {
+         cmd += L" ";
+         cmd += WinCommon::Utf8ToWide(a);
+      }
+      std::vector<wchar_t> buf(cmd.begin(), cmd.end());
+      buf.push_back(L'\0');
+
+      STARTUPINFOW si = {};
+      si.cb = sizeof(si);
+      PROCESS_INFORMATION pi = {};
+      // CREATE_NO_WINDOW: `ollama serve` must not flash a console window. DETACHED_PROCESS
+      // would also detach from the job; CREATE_NO_WINDOW keeps the process in the same job
+      // tree while giving it no window.
+      const BOOL ok = CreateProcessW(buf.data(), buf.data(), nullptr, nullptr, FALSE,
+                                     CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi);
+      if (!ok)
+         return false;
+      CloseHandle(pi.hThread);
+      CloseHandle(pi.hProcess);
       return true;
    }
 

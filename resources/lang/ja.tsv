@@ -4066,3 +4066,19 @@ Wave	波
 Wave deform	波状変形
 Worley Cracks	Worleyのひび割れ
 fBm Clouds	fBmの雲
+Connecting…	接続中…
+Connection refused. The server is not running, or is on another host/port.	接続が拒否されました。サーバーが実行されていないか、別のホスト/ポートで待機しています。
+Error:	エラー：
+Failed to start Ollama	Ollama を起動できませんでした
+Model list request failed.	モデル一覧の要求に失敗しました。
+Model list request timed out.	モデル一覧の要求がタイムアウトしました。
+Ollama is already running.	Ollama は既に実行されています。
+Ollama is not running	Ollama は実行されていません
+Ollama not found. Install it and restart the app.	Ollama が見つかりません。インストールしてアプリを再起動してください。
+Ollama started.	Ollama を起動しました。
+Start Ollama	Ollama を起動
+Starting Ollama…	Ollama を起動中…
+The request failed.	要求に失敗しました。
+The request timed out.	要求がタイムアウトしました。
+The server answered with an error status.	サーバーがエラーステータスで応答しました。
+TLS/certificate error while connecting.	接続中に TLS/証明書エラーが発生しました。
