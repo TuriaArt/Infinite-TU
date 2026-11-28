@@ -2055,7 +2055,7 @@ namespace Platform
    // user-installed copy wins over a stale system one. Returns "" when nothing is found.
    std::string FindOllamaExecutable()
    {
-      const std::vector<std::wstring> dirs = {
+      std::vector<std::wstring> dirs = {
          // Default installer location (per-machine) and the per-user fallback.
          L"C:\\Program Files\\Ollama",
          L"C:\\Program Files (x86)\\Ollama",
