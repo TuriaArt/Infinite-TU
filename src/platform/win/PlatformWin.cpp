@@ -2076,9 +2076,11 @@ namespace Platform
             return WinCommon::WideToUtf8(exe.c_str());
       }
 
-      // PATH: SearchPathW finds ollama.exe anywhere on it (and in the current directory).
+      // PATH: SearchPathW finds ollama.exe anywhere on the system search path (and in the
+      // current directory). Six-argument form: lpPath=NULL (registry search path), no
+      // extension, lpFilePart unused.
       wchar_t found[MAX_PATH] = {};
-      const DWORD n = SearchPathW(nullptr, L"ollama.exe", found, MAX_PATH, nullptr);
+      const DWORD n = SearchPathW(nullptr, L"ollama.exe", nullptr, MAX_PATH, found, nullptr);
       if (n > 0 && n < MAX_PATH)
          return WinCommon::WideToUtf8(found);
       return std::string();
