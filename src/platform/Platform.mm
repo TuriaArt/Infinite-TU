@@ -9261,7 +9261,7 @@ namespace Platform
 
    bool HttpGet(const std::string& url, const std::string& userAgent,
                 std::string& outBody, std::string& outError,
-                int timeoutSeconds)
+                int timeoutSeconds, const std::string& bearerToken)
    {
       outBody.clear();
       outError.clear();
@@ -9283,6 +9283,11 @@ namespace Platform
 
          NSMutableURLRequest* request = [NSMutableURLRequest requestWithURL:nsUrl];
          [request setValue:[NSString stringWithUTF8String:userAgent.c_str()] forHTTPHeaderField:@"User-Agent"];
+         // An API-key endpoint needs the Authorization header; a local Ollama needs none,
+         // so it is only sent when a token was configured.
+         if (!bearerToken.empty())
+            [request setValue:[NSString stringWithFormat:@"Bearer %@", [NSString stringWithUTF8String:bearerToken.c_str()]]
+                            forHTTPHeaderField:@"Authorization"];
          [request setTimeoutInterval:(NSTimeInterval)timeoutSeconds];
 
          NSURLSessionConfiguration* config = [NSURLSessionConfiguration ephemeralSessionConfiguration];

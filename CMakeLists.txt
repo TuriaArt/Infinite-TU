@@ -567,6 +567,8 @@ set(COMMON_SOURCES
     src/core/chat/FileFinder.cpp
     src/core/chat/ChatThread.cpp
     src/core/chat/OpenAIAgent.cpp
+    src/core/chat/HarnessConfig.cpp
+    src/core/chat/LocalProtocol.cpp
     src/app/panels/TerminalDraw.cpp
     src/app/panels/SampleStudioPanel.cpp
     src/app/panels/TemplatesWindow.cpp
